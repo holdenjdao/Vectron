@@ -13,6 +13,9 @@ from vectron import __version__
 from vectron.domain.jobs import BuildRequest, JobEvent, JobStatus
 
 COLORS = {"succeeded": "32", "failed": "31", "skipped": "90", "started": "36", "artifact": "34"}
+# Source files whose edits should restart `vectron serve --reload`: code, templates,
+# blueprints and agent prompts.
+RELOAD_PATTERNS = ("*.py", "*.j2", "*.yaml", "*.md")
 
 
 def _paint(text: str, code: str | None) -> str:
@@ -44,12 +47,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         import uvicorn
 
+        # With --reload, watch only Vectron's own source. Builds write generated
+        # projects (including .py files) under the data directory, and a reload
+        # there would restart the server and cancel the build in progress.
         uvicorn.run(
             "vectron.api.app:create_app",
             factory=True,
             host=args.host,
             port=args.port,
             reload=args.reload,
+            reload_dirs=[str(Path(__file__).resolve().parent)] if args.reload else None,
+            reload_includes=list(RELOAD_PATTERNS) if args.reload else None,
         )
         return 0
     if args.command == "blueprints":

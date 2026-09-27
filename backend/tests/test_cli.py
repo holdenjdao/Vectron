@@ -33,3 +33,21 @@ def test_listings(capsys: pytest.CaptureFixture[str]) -> None:
     assert "perimeter-radar-node" in capsys.readouterr().out
     assert main(["parts"]) == 0
     assert "multirotor-mixer" in capsys.readouterr().out
+
+
+def test_dev_reload_ignores_generated_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: builds write .py files; the reloader must not restart mid-build."""
+    import uvicorn
+
+    import vectron
+
+    calls: list[dict] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *args, **kwargs: calls.append(kwargs))
+    assert main(["serve", "--reload"]) == 0
+    package_dir = Path(vectron.__file__).resolve().parent
+    assert calls[0]["reload"] is True
+    assert calls[0]["reload_dirs"] == [str(package_dir)]
+    assert "*.yaml" in calls[0]["reload_includes"]
+
+    assert main(["serve"]) == 0
+    assert calls[1]["reload"] is False and calls[1]["reload_dirs"] is None
