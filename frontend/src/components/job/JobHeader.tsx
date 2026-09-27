@@ -67,6 +67,7 @@ function BundleButton({ job }: { job: JobRecord }) {
 
 function engineLabel(job: JobRecord): string {
   if (job.llm.provider === "anthropic") return `Claude · ${job.llm.model ?? "default"}`;
+  if (job.llm.provider === "claude-code") return `Claude${job.llm.model ? ` · ${job.llm.model}` : " (subscription)"}`;
   if (job.llm.provider === "offline") return "Offline";
   return job.llm.provider || "—";
 }

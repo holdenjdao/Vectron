@@ -42,6 +42,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     start.add_argument("--port", type=int, default=8000)
     start.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
+    start.add_argument(
+        "--engine",
+        choices=["auto", "claude-code", "anthropic", "offline"],
+        default="auto",
+        help="AI engine; auto uses Claude Code (your subscription) when installed, else offline",
+    )
 
     commands.add_parser("blueprints", help="list the blueprint catalog")
     commands.add_parser("parts", help="list the parts library")
@@ -72,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if args.command == "start":
-        return _start(args.port, open_browser=not args.no_browser)
+        return _start(args.port, open_browser=not args.no_browser, engine=args.engine)
     if args.command == "blueprints":
         return _list_blueprints()
     if args.command == "parts":
@@ -116,7 +122,7 @@ def _ensure_ui(frontend: Path) -> bool:
     return True
 
 
-def _start(port: int, open_browser: bool) -> int:
+def _start(port: int, open_browser: bool, engine: str = "auto") -> int:
     """One command for everything: build the UI if needed, then serve UI + API together."""
     import uvicorn
 
@@ -124,6 +130,12 @@ def _start(port: int, open_browser: bool) -> int:
         return 1
     # A short per-task delay so the assembly line is visible in the UI.
     os.environ.setdefault("VECTRON_PACING_SECONDS", "0.4")
+    # Use Claude through the local Claude Code login when it is installed.
+    if engine != "auto":
+        os.environ["VECTRON_LLM_PROVIDER"] = engine
+    elif "VECTRON_LLM_PROVIDER" not in os.environ:
+        os.environ["VECTRON_LLM_PROVIDER"] = "claude-code" if shutil.which("claude") else "offline"
+    print(f"Engine: {os.environ['VECTRON_LLM_PROVIDER']}")
     url = f"http://localhost:{port}"
     print(f"\nVectron is running at {url}  (press Ctrl+C to stop)\n")
     if open_browser:

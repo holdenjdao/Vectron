@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from vectron.config import Settings
 
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 def create_provider(settings: Settings) -> LLMProvider:
-    """Build the provider named by ``VECTRON_LLM_PROVIDER`` (default: offline)."""
+    """Build the provider named by ``VECTRON_LLM_PROVIDER``: offline, claude-code or anthropic."""
     choice = settings.llm_provider.lower()
     if choice in ("", "offline", "none"):
         return OfflineProvider()
@@ -34,4 +35,14 @@ def create_provider(settings: Settings) -> LLMProvider:
                 "or run `ant auth login`.)"
             )
         return provider
+    if choice in ("claude-code", "claude_code", "subscription"):
+        from .claude_code_provider import ClaudeCodeProvider
+
+        binary = ClaudeCodeProvider.find_binary()
+        if binary is None:
+            return OfflineProvider(
+                reason="(Claude Code requested but the `claude` command was not found: install it "
+                "with `npm install -g @anthropic-ai/claude-code` and run `claude` once to log in.)"
+            )
+        return ClaudeCodeProvider(binary, model=os.environ.get("VECTRON_MODEL") or None)
     return OfflineProvider(reason=f"(unknown VECTRON_LLM_PROVIDER {settings.llm_provider!r})")

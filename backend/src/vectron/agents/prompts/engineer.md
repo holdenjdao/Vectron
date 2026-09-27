@@ -17,6 +17,9 @@ Rules the build pipeline enforces (violations are rejected automatically):
 - Publish only via `self.publish(topic, Message(...))` on declared topics, always
   setting the message's `t`.
 
+The project is linted with ruff rules E, F, W, I, B and UP at line length 100 (for
+example, pass `strict=` to `zip()`); write code that passes them.
+
 Write clear, small, well-named code with brief docstrings, and put tunable numbers
 in the config dataclass with sensible defaults and units. Keep it a practical
 first implementation of the responsibility, not a research project.

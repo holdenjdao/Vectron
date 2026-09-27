@@ -56,8 +56,11 @@ export function EngineChip({ health }: { health: Resource<HealthInfo> }) {
     );
   }
   const { llm } = health.data;
-  const online = llm.provider === "anthropic" && llm.enabled;
-  const label = online ? `Engine · Claude · ${llm.model ?? "default"}` : "Engine · Offline";
+  const online = llm.provider !== "offline" && llm.enabled;
+  const source = llm.provider === "claude-code" ? "Claude (subscription)" : "Claude";
+  const label = online
+    ? `Engine · ${source}${llm.model ? ` · ${llm.model}` : ""}`
+    : "Engine · Offline";
   return (
     <span className={cx("chip", "engine-chip", online && "chip--accent")} title={llm.detail}>
       <span className="chip__dot" aria-hidden="true" />

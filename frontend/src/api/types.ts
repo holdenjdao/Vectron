@@ -24,7 +24,7 @@ export interface HealthInfo {
   /** Classification banner text shown at the top of the UI, e.g. "UNCLASSIFIED". */
   banner: string;
   llm: {
-    provider: "offline" | "anthropic";
+    provider: "offline" | "anthropic" | "claude-code";
     model: string | null;
     enabled: boolean;
     /** Human readable status, e.g. "Deterministic offline mode" or a config problem. */

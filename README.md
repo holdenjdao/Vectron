@@ -64,6 +64,16 @@ cd ../out/recon-drone && python -m pytest && python -m recon_drone
 
 ### Turning on Claude
 
+**With your Claude subscription (no API key):** install Claude Code
+(`npm install -g @anthropic-ai/claude-code`) and run `claude` once to log in. After
+that, `start.command` / `start.bat` / `make start` automatically use it: the agents
+call `claude -p` on your machine and the header shows **Engine · Claude
+(subscription)**. This is for personal use on your own computer; usage counts
+against your subscription limits. Force an engine with
+`uv run vectron start --engine offline|claude-code|anthropic`.
+
+**With an API key** (needed for a hosted, multi-user setup):
+
 Vectron runs fully offline by default. Agents use the blueprint catalog, the parts
 library and stubs, and make no network calls. To let the agents use Claude:
 
@@ -118,7 +128,7 @@ docs/                    architecture notes
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `VECTRON_LLM_PROVIDER` | `offline` | `offline` or `anthropic` |
+| `VECTRON_LLM_PROVIDER` | `offline` (`auto` via `vectron start`) | `offline`, `claude-code` (subscription) or `anthropic` (API key) |
 | `VECTRON_MODEL` | `claude-opus-5` | Claude model for LLM-backed agents |
 | `VECTRON_EFFORT` | `medium` | Claude effort level (`low` … `max`) |
 | `VECTRON_MAX_CONCURRENCY` | `4` | Agents running at once |
