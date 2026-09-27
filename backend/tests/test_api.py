@@ -11,6 +11,11 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
+from vectron.api.app import create_app
+from vectron.blueprints.catalog import BlueprintCatalog
+from vectron.config import Settings
+from vectron.service import Factory
+
 
 def wait_for(client: TestClient, job_id: str, timeout: float = 30.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
@@ -125,3 +130,26 @@ def test_event_stream_replays_and_closes(client: TestClient) -> None:
     with client.stream("GET", f"/api/jobs/{job['id']}/events?after={len(payloads) - 3}") as tail:
         rest = [line for line in tail.iter_lines() if line.startswith("data: ")]
     assert len(rest) == 2
+
+
+def test_root_explains_how_to_start_the_ui_when_it_is_not_built(
+    tmp_path: Path, catalog: BlueprintCatalog
+) -> None:
+    empty = tmp_path / "no-ui"
+    empty.mkdir()
+    settings = Settings(data_dir=tmp_path / "data", llm_provider="offline", static_dir=empty)
+    with TestClient(create_app(Factory(settings, catalog=catalog))) as client:
+        page = client.get("/")
+    assert page.status_code == 200
+    assert page.headers["content-type"].startswith("text/html")
+    assert "npm run dev" in page.text and 'href="/docs"' in page.text
+
+
+def test_root_serves_the_built_ui(tmp_path: Path, catalog: BlueprintCatalog) -> None:
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<!doctype html><title>Vectron UI</title>")
+    settings = Settings(data_dir=tmp_path / "data", llm_provider="offline", static_dir=dist)
+    with TestClient(create_app(Factory(settings, catalog=catalog))) as client:
+        assert "Vectron UI" in client.get("/").text
+        assert client.get("/api/health").json()["status"] == "ok"
