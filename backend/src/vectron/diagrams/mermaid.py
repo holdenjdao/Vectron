@@ -85,9 +85,6 @@ def data_flow(spec: SystemSpec) -> str:
 
 def state_machine(machine: StateMachineSpec) -> str:
     lines = ["stateDiagram-v2", f"  [*] --> {machine.initial}"]
-    for state in machine.states:
-        if state.doc:
-            lines.append(f"  {state.name} : {text(state.doc)}")
     for transition in machine.transitions:
         lines.append(f"  {transition.source} --> {transition.target} : {text(transition.trigger)}")
     return "\n".join(lines) + "\n"

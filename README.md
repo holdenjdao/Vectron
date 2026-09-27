@@ -11,6 +11,10 @@ Commander ─▶ Architect ─┬─▶ Draftsman ──────────
                         └─▶ ...                  ┘   (quality gate)  (docs + manifest)
 ```
 
+![Vectron catalog](docs/images/catalog.png)
+
+![Assembly line mid-build: Engineers fabricating modules in parallel](docs/images/assembly-line.png)
+
 A single build of the **Recon Drone** blueprint produces:
 
 - **Diagrams:** a dimensioned, blueprint-style airframe drawing (SVG, parametric in
@@ -25,6 +29,8 @@ A single build of the **Recon Drone** blueprint produces:
 - **Documents:** README, Interface Control Document, inspection report and a build
   manifest with provenance and a SHA-256 hash for every file.
 
+![Module provenance and per-module downloads](docs/images/build-modules.png)
+
 ## Quick start
 
 Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/) and Node.js 20+.
@@ -36,7 +42,9 @@ make dev            # API on :8000 and UI on http://localhost:5173
 
 Open http://localhost:5173 and press **Build** on a blueprint. `make dev` adds a
 small per-task delay (`PACING=0.4`) so you can watch the agents work. Use
-`make dev PACING=0` for full speed.
+`make dev PACING=0` for full speed. The REST API is documented at
+http://localhost:8000/docs. `make serve` builds the UI and serves everything
+from port 8000.
 
 Without the UI:
 

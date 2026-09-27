@@ -1,0 +1,92 @@
+/* Syntax colours for highlight.js, matched to the console palette. */
+
+.hljs-comment,
+.hljs-quote {
+  color: #62788d;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-doctag,
+.hljs-type {
+  color: #c4a5ff;
+}
+
+.hljs-built_in {
+  color: #7dd3fc;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-char.escape_ {
+  color: #8fe3b9;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  color: #f5b841;
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-section {
+  color: #4cc2ff;
+}
+
+.hljs-section {
+  font-weight: 600;
+}
+
+.hljs-params,
+.hljs-subst {
+  color: #c9d6e2;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #7dd3fc;
+}
+
+.hljs-tag {
+  color: #8397ab;
+}
+
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+  color: #ff9f68;
+}
+
+.hljs-meta .hljs-string {
+  color: #8fe3b9;
+}
+
+.hljs-code {
+  color: #f5b841;
+}
+
+.hljs-link {
+  color: #4cc2ff;
+  text-decoration: underline;
+}
+
+.hljs-deletion {
+  color: #ff5f5f;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
