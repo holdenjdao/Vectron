@@ -62,16 +62,19 @@ class PackagerAgent(Agent):
 
     def _manifest(self, ctx: RunContext, path: str) -> GeneratedFile:
         record, board = ctx.job.record, ctx.job.board
-        assert board.blueprint is not None
         manifest = {
             "vectron": __version__,
             "job": record.id,
             "created_at": record.created_at.isoformat(),
-            "blueprint": {
-                "id": board.blueprint.id,
-                "designation": board.blueprint.designation,
-                "options": board.options,
-            },
+            "blueprint": (
+                {
+                    "id": board.blueprint.id,
+                    "designation": board.blueprint.designation,
+                    "options": board.options,
+                }
+                if board.blueprint
+                else {"id": None, "designed_from_brief": True}
+            ),
             "brief": record.request.brief,
             "llm": {**record.llm.model_dump(), **record.usage.model_dump()},
             "modules": [

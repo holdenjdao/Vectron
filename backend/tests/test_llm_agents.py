@@ -205,3 +205,151 @@ async def test_engineer_rejects_code_that_breaks_factory_rules(
     modules = {m.id: m for m in job.record.modules}
     assert modules["guidance_controller"].provenance == "stub"
     assert "subprocess" in modules["guidance_controller"].notes[0]
+
+
+TOWER_DESIGN = {
+    "name": "Airfield Control Tower",
+    "designation": "VX-ACT1",
+    "package": "airfield_tower",
+    "summary": "Surveillance, flight strips and runway safety for a small airfield.",
+    "description": "Fuses radar plots into tracks and keeps controllers aware of traffic.",
+    "rationale": "A tower is a C2 system, not an aircraft.",
+    "messages": [
+        {
+            "name": "RadarPlot",
+            "doc": "Raw surveillance return.",
+            "fields": [
+                {"name": "range_m", "type": "float", "unit": "m", "doc": "Range."},
+                {"name": "bearing_deg", "type": "float", "unit": "deg", "doc": "Bearing."},
+            ],
+        },
+        {
+            "name": "TrafficTrack",
+            "doc": "Correlated aircraft track.",
+            "fields": [
+                {"name": "track_id", "type": "int", "unit": "", "doc": "Track number."},
+                {"name": "callsign", "type": "str", "unit": "", "doc": "Callsign."},
+            ],
+        },
+    ],
+    "topics": [
+        {"name": "sensors.plots", "message": "RadarPlot", "doc": "Radar input.", "external": True},
+        {
+            "name": "surveillance.tracks",
+            "message": "TrafficTrack",
+            "doc": "Tracks.",
+            "external": False,
+        },
+    ],
+    "subsystems": [
+        {
+            "id": "surveillance",
+            "name": "Surveillance",
+            "description": "Radar processing.",
+            "modules": [
+                {
+                    "id": "track_correlator",
+                    "name": "Track Correlator",
+                    "responsibility": "Turn plots into tracks.",
+                    "subscribes": ["sensors.plots"],
+                    "publishes": ["surveillance.tracks"],
+                }
+            ],
+        },
+        {
+            "id": "tower_ops",
+            "name": "Tower Operations",
+            "description": "Controller tools.",
+            "modules": [
+                {
+                    "id": "runway_monitor",
+                    "name": "Runway Monitor",
+                    "responsibility": "Warn about runway incursions.",
+                    "subscribes": ["surveillance.tracks"],
+                    "publishes": [],
+                }
+            ],
+        },
+    ],
+    "state_machines": [
+        {
+            "id": "runway_state",
+            "title": "Runway state",
+            "initial": "CLEAR",
+            "states": [{"name": "CLEAR", "doc": "Free."}, {"name": "OCCUPIED", "doc": "In use."}],
+            "transitions": [
+                {"source": "CLEAR", "trigger": "ENTER", "target": "OCCUPIED"},
+                {"source": "OCCUPIED", "trigger": "VACATE", "target": "CLEAR"},
+            ],
+        }
+    ],
+    "sequences": [
+        {
+            "id": "arrival",
+            "title": "Arrival",
+            "participants": [
+                {"id": "radar", "label": "Radar", "kind": "actor"},
+                {"id": "track_correlator", "label": "Track Correlator", "kind": "module"},
+            ],
+            "steps": [
+                {
+                    "source": "radar",
+                    "target": "track_correlator",
+                    "message": "RadarPlot",
+                    "note": "",
+                }
+            ],
+        }
+    ],
+}
+
+NO_FIT = {"blueprint_id": "none", "options": [], "rationale": "An airfield tower is not a drone."}
+
+
+async def test_commander_orders_a_new_design_when_no_blueprint_fits(
+    settings: Settings, catalog: BlueprintCatalog
+) -> None:
+    llm = ScriptedLLM(
+        {"Commander": NO_FIT, "from scratch": TOWER_DESIGN, "Engineer": LLMError("busy")}
+    )
+    factory = Factory(settings, catalog=catalog, llm=llm)
+    job = await factory.build(BuildRequest(brief="an air traffic control tower for an airfield"))
+    assert job.record.status is JobStatus.SUCCEEDED, job.record.error
+    assert job.board.blueprint is None and job.board.design_from_brief
+    spec = job.board.spec
+    assert spec is not None and spec.package == "airfield_tower"
+    assert job.record.title == "Airfield Control Tower (VX-ACT1)"
+    assert {m.id for m in job.record.modules} == {"track_correlator", "runway_monitor"}
+    assert job.board.architect_notes.startswith("A tower is a C2 system")
+    assert llm.calls[:2] == ["Commander", "from scratch"]
+
+
+async def test_invalid_design_is_sent_back_for_correction(
+    settings: Settings, catalog: BlueprintCatalog
+) -> None:
+    broken = {**TOWER_DESIGN, "topics": TOWER_DESIGN["topics"][:1]}  # tracks topic missing
+    answers: list[dict] = [broken, TOWER_DESIGN]
+
+    class Correcting(ScriptedLLM):
+        async def generate_json(self, *, system: str, **kwargs):  # type: ignore[override]
+            if "from scratch" in system:
+                self.answers["from scratch"] = answers.pop(0)
+            return await super().generate_json(system=system, **kwargs)
+
+    llm = Correcting({"Commander": NO_FIT, "from scratch": {}, "Engineer": LLMError("busy")})
+    job = await Factory(settings, catalog=catalog, llm=llm).build(
+        BuildRequest(brief="an air traffic control tower")
+    )
+    assert job.record.status is JobStatus.SUCCEEDED, job.record.error
+    assert llm.calls.count("from scratch") == 2
+
+
+async def test_offline_build_does_not_force_an_unrelated_blueprint(
+    settings: Settings, catalog: BlueprintCatalog
+) -> None:
+    job = await Factory(settings, catalog=catalog).build(
+        BuildRequest(brief="an air traffic control tower")
+    )
+    # Offline there is no designer: keyword matching picks the nearest blueprint,
+    # and generic words like "air" no longer pull in the drone.
+    assert job.record.blueprint_id != "recon-drone"

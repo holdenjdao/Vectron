@@ -27,6 +27,7 @@ class JobSnapshot(BaseModel):
     options: dict[str, Any]
     spec: SystemSpec | None
     architect_notes: str = ""
+    design_from_brief: bool = False
 
 
 @dataclass
@@ -37,6 +38,9 @@ class Blackboard:
     options: dict[str, Any] = field(default_factory=dict)
     spec: SystemSpec | None = None
     architect_notes: str = ""
+    design_from_brief: bool = False
+    """No blueprint fits: the Architect designs a new system from the brief."""
+    design_reason: str = ""
 
 
 class Job:
@@ -59,6 +63,7 @@ class Job:
             options=self.board.options,
             spec=self.board.spec,
             architect_notes=self.board.architect_notes,
+            design_from_brief=self.board.design_from_brief,
         )
         (self.workspace.root / SNAPSHOT_FILE).write_text(snapshot.model_dump_json(), "utf-8")
 
@@ -71,6 +76,7 @@ class Job:
             options=snapshot.options,
             spec=snapshot.spec,
             architect_notes=snapshot.architect_notes,
+            design_from_brief=snapshot.design_from_brief,
         )
         return job
 

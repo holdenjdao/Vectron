@@ -6,7 +6,7 @@ summary: >-
   Small multirotor ISR aircraft: stabilised flight control, GNSS navigation,
   waypoint missions, geofencing, EO/IR gimbal pointing and CRC-framed telemetry.
 keywords: [drone, uav, uas, suas, quadcopter, hexacopter, octocopter, multirotor, copter,
-  recon, reconnaissance, isr, surveillance, aerial, aircraft, air, fly, flying, overwatch]
+  recon, reconnaissance, isr, surveillance, aerial, aircraft, overwatch]
 
 options:
   - key: layout

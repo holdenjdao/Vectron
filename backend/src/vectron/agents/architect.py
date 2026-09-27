@@ -9,12 +9,14 @@ from pydantic import ValidationError
 
 from vectron.codegen.files import GeneratedFile
 from vectron.codegen.python.parts import get_part
+from vectron.domain.blueprint import Blueprint
 from vectron.domain.jobs import ArtifactKind
 from vectron.domain.spec import SystemSpec
 from vectron.domain.values import FIELD_TYPES
 from vectron.llm.base import LLMError
 from vectron.orchestration import Agent, AgentError, AgentResult, RunContext, TaskSpec
 
+from .designer import design_spec
 from .prompts import load_prompt
 
 MAX_NEW_MODULES = 3
@@ -108,16 +110,26 @@ class ArchitectAgent(Agent):
 
     async def run(self, ctx: RunContext) -> AgentResult:
         board = ctx.job.board
-        if board.blueprint is None:
-            raise AgentError("no blueprint selected")
         brief = ctx.job.record.request.brief
-        try:
-            spec = board.blueprint.instantiate(board.options, brief=brief)
-        except (ValidationError, ValueError) as exc:
-            raise AgentError(
-                f"blueprint {board.blueprint.id} produced an invalid spec: {exc}"
-            ) from exc
+        if board.design_from_brief:
+            spec, board.architect_notes = await design_spec(ctx, brief)
+            ctx.job.record.title = f"{spec.name} ({spec.designation})"
+            ctx.log(f"Designed {spec.designation} {spec.name} from the brief")
+        elif board.blueprint is None:
+            raise AgentError("no blueprint selected")
+        else:
+            spec = await self._from_blueprint(ctx, board.blueprint, brief)
+        board.spec = spec
+        return self._dispatch(ctx, spec)
 
+    async def _from_blueprint(
+        self, ctx: RunContext, blueprint: Blueprint, brief: str
+    ) -> SystemSpec:
+        board = ctx.job.board
+        try:
+            spec = blueprint.instantiate(board.options, brief=brief)
+        except (ValidationError, ValueError) as exc:
+            raise AgentError(f"blueprint {blueprint.id} produced an invalid spec: {exc}") from exc
         if brief and ctx.llm.enabled:
             try:
                 spec, notes, changes = await self._refine(ctx, spec, brief)
@@ -125,8 +137,9 @@ class ArchitectAgent(Agent):
                 ctx.log(f"Adapted spec to the brief: {', '.join(changes) or 'no changes needed'}")
             except (LLMError, ValidationError, ValueError, KeyError) as exc:
                 ctx.log(f"Keeping the blueprint spec; proposed patch rejected: {exc}")
-        board.spec = spec
+        return spec
 
+    def _dispatch(self, ctx: RunContext, spec: SystemSpec) -> AgentResult:
         ctx.save(
             GeneratedFile(
                 "vectron.spec.json",

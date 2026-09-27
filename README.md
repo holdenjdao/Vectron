@@ -83,7 +83,11 @@ VECTRON_LLM_PROVIDER=anthropic make dev
 ```
 
 With a model enabled:
-- the Commander interprets free-text mission briefs;
+- the Commander interprets free-text mission briefs and picks a blueprint only
+  when it is genuinely the same kind of system;
+- when nothing in the catalog fits (say, an air traffic control tower), the
+  Architect designs a brand-new system from the brief: subsystems, modules,
+  messages, a state machine and sequences, all validated before rendering;
 - the Architect adapts the spec to the brief (new modules, config changes);
 - Engineers implement stub modules.
 

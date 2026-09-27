@@ -26,7 +26,10 @@ class PlannerAgent(Agent):
                 raise AgentError(str(exc)) from exc
             options, how = dict(request.options), "requested directly"
         else:
-            blueprint, suggested, how = await self._from_brief(ctx, request.brief)
+            selection = await self._from_brief(ctx, request.brief)
+            if selection is None:
+                return self._design_new(ctx)
+            blueprint, suggested, how = selection
             options = {**suggested, **request.options}  # explicit options win
 
         try:
@@ -44,9 +47,19 @@ class PlannerAgent(Agent):
             spawn=(TaskSpec("architect", "architect", "Derive the system specification"),),
         )
 
+    def _design_new(self, ctx: RunContext) -> AgentResult:
+        ctx.job.board.design_from_brief = True
+        ctx.job.record.title = "New system (designing from brief)"
+        ctx.log("No blueprint fits the brief; the Architect will design a new system")
+        return AgentResult(
+            summary=f"no blueprint fits; new design ordered ({ctx.job.board.design_reason})",
+            spawn=(TaskSpec("architect", "architect", "Design a new system from the brief"),),
+        )
+
     async def _from_brief(
         self, ctx: RunContext, brief: str
-    ) -> tuple[Blueprint, dict[str, Any], str]:
+    ) -> tuple[Blueprint, dict[str, Any], str] | None:
+        """A catalog blueprint for the brief, or None when a new design is needed."""
         if ctx.llm.enabled:
             try:
                 return await self._llm_select(ctx, brief)
@@ -61,7 +74,7 @@ class PlannerAgent(Agent):
 
     async def _llm_select(
         self, ctx: RunContext, brief: str
-    ) -> tuple[Blueprint, dict[str, Any], str]:
+    ) -> tuple[Blueprint, dict[str, Any], str] | None:
         catalog = [
             {
                 "id": b.id,
@@ -84,7 +97,7 @@ class PlannerAgent(Agent):
         schema = {
             "type": "object",
             "properties": {
-                "blueprint_id": {"type": "string", "enum": [b["id"] for b in catalog]},
+                "blueprint_id": {"type": "string", "enum": [*(b["id"] for b in catalog), "none"]},
                 "options": {
                     "type": "array",
                     "items": {
@@ -107,6 +120,10 @@ class PlannerAgent(Agent):
             schema=schema,
             effort="low",
         )
+        rationale = str(result.data.get("rationale", "")).strip()
+        if result.data["blueprint_id"] == "none":
+            ctx.job.board.design_reason = rationale[:200]
+            return None
         blueprint = ctx.catalog.get(result.data["blueprint_id"])
         options: dict[str, Any] = {}
         known = {o.key: o for o in blueprint.options}
@@ -118,5 +135,4 @@ class PlannerAgent(Agent):
                 options[option.key] = option.coerce(item.get("value"))
             except ValueError as exc:
                 ctx.log(f"Ignoring suggested option {option.key}: {exc}")
-        rationale = str(result.data.get("rationale", "")).strip()
         return blueprint, options, f"selected by {result.model}: {rationale}"[:300]
