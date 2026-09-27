@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -51,3 +53,18 @@ def test_dev_reload_ignores_generated_output(monkeypatch: pytest.MonkeyPatch) ->
 
     assert main(["serve"]) == 0
     assert calls[1]["reload"] is False and calls[1]["reload_dirs"] is None
+
+
+def test_ui_staleness(tmp_path: Path) -> None:
+    from vectron.cli import _ui_is_stale
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.tsx").write_text("x")
+    assert _ui_is_stale(tmp_path)  # never built
+    (tmp_path / "dist").mkdir()
+    built = tmp_path / "dist" / "index.html"
+    built.write_text("<html>")
+    os.utime(built, (time.time() + 10, time.time() + 10))
+    assert not _ui_is_stale(tmp_path)
+    os.utime(tmp_path / "src" / "main.tsx", (time.time() + 20, time.time() + 20))
+    assert _ui_is_stale(tmp_path)  # source edited after the build

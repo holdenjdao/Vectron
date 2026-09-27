@@ -5,7 +5,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import io
+import os
+import shutil
+import subprocess
 import sys
+import threading
+import webbrowser
 import zipfile
 from pathlib import Path
 
@@ -31,6 +36,12 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--reload", action="store_true", help="restart on code changes")
+
+    start = commands.add_parser(
+        "start", help="build the web UI if needed, serve everything on one port, open a browser"
+    )
+    start.add_argument("--port", type=int, default=8000)
+    start.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
 
     commands.add_parser("blueprints", help="list the blueprint catalog")
     commands.add_parser("parts", help="list the parts library")
@@ -60,11 +71,65 @@ def main(argv: list[str] | None = None) -> int:
             reload_includes=list(RELOAD_PATTERNS) if args.reload else None,
         )
         return 0
+    if args.command == "start":
+        return _start(args.port, open_browser=not args.no_browser)
     if args.command == "blueprints":
         return _list_blueprints()
     if args.command == "parts":
         return _list_parts()
     return asyncio.run(_build(args))
+
+
+# backend/src/vectron/cli.py -> repository root -> frontend/
+FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
+
+
+def _ui_is_stale(frontend: Path) -> bool:
+    """True when frontend/dist is missing or older than any UI source file."""
+    built = frontend / "dist" / "index.html"
+    if not built.is_file():
+        return True
+    sources = [frontend / "index.html", frontend / "package.json", *(frontend / "src").rglob("*")]
+    newest = max((f.stat().st_mtime for f in sources if f.is_file()), default=0.0)
+    return newest > built.stat().st_mtime
+
+
+def _ensure_ui(frontend: Path) -> bool:
+    """Install and build the web UI when needed. Returns False if it cannot be built."""
+    if not _ui_is_stale(frontend):
+        return True
+    npm = shutil.which("npm")
+    if npm is None:
+        print(
+            "Node.js (npm) was not found, so the web UI cannot be built.\n"
+            "Install the LTS version from https://nodejs.org, reopen your terminal and retry.",
+            file=sys.stderr,
+        )
+        return False
+    steps = [[npm, "install"]] if not (frontend / "node_modules").is_dir() else []
+    steps.append([npm, "run", "build"])
+    for step in steps:
+        print(f"Building the web UI: {' '.join(step[1:])} ...")
+        if subprocess.run(step, cwd=frontend).returncode != 0:
+            print(f"`npm {' '.join(step[1:])}` failed; see the output above.", file=sys.stderr)
+            return False
+    return True
+
+
+def _start(port: int, open_browser: bool) -> int:
+    """One command for everything: build the UI if needed, then serve UI + API together."""
+    import uvicorn
+
+    if not _ensure_ui(FRONTEND_DIR):
+        return 1
+    # A short per-task delay so the assembly line is visible in the UI.
+    os.environ.setdefault("VECTRON_PACING_SECONDS", "0.4")
+    url = f"http://localhost:{port}"
+    print(f"\nVectron is running at {url}  (press Ctrl+C to stop)\n")
+    if open_browser:
+        threading.Timer(1.5, webbrowser.open, args=(url,)).start()
+    uvicorn.run("vectron.api.app:create_app", factory=True, host="127.0.0.1", port=port)
+    return 0
 
 
 def _list_blueprints() -> int:

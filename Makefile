@@ -1,9 +1,10 @@
-.PHONY: help install dev backend frontend test lint format build serve
+.PHONY: help install start dev backend frontend test lint format build serve
 
 # Per-task delay so you can watch the assembly line in the UI (0 = full speed).
 PACING ?= 0.4
 
 help:
+	@echo "make start     one terminal: build the UI if needed, serve everything on :8000"
 	@echo "make install   install backend (uv) and frontend (npm) dependencies"
 	@echo "make dev       API on :8000 + UI on :5173 with live reload"
 	@echo "make test      backend tests + frontend typecheck"
@@ -14,6 +15,9 @@ help:
 install:
 	cd backend && uv sync
 	cd frontend && npm install
+
+start:
+	cd backend && uv sync --quiet && uv run vectron start
 
 backend:
 	cd backend && VECTRON_PACING_SECONDS=$(PACING) uv run vectron serve --reload
