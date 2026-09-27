@@ -35,6 +35,12 @@ A single build of the **Recon Drone** blueprint produces:
 
 Prerequisites: Python 3.11+, [uv](https://docs.astral.sh/uv/) and Node.js 20+.
 
+**Easiest:** double-click `start.command` (macOS) or `start.bat` (Windows), or run
+`./start.sh` / `make start`. It builds the UI the first time, starts everything on
+one port and opens http://localhost:8000.
+
+For development with live reload of both halves:
+
 ```bash
 make install        # backend (uv) + frontend (npm) dependencies
 make dev            # API on :8000 and UI on http://localhost:5173
