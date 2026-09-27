@@ -23,6 +23,14 @@ class EventLog:
         self._events.append(event)
         self._notify()
 
+    @classmethod
+    def restored(cls, events: list[JobEvent]) -> EventLog:
+        """A closed log holding a finished job's history (after a server restart)."""
+        log = cls()
+        log._events = list(events)
+        log.closed = True
+        return log
+
     def close(self) -> None:
         """Mark the log complete; waiters wake up and see no further events will come."""
         self.closed = True

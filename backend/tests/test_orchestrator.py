@@ -144,3 +144,14 @@ def test_unknown_blueprint_is_rejected_before_a_job_exists(factory: Factory) -> 
     with pytest.raises(KeyError):
         factory.create_job(BuildRequest(blueprint_id="warp-drive"))
     assert factory.jobs() == []
+
+
+async def test_finished_jobs_survive_a_restart(factory: Factory) -> None:
+    job = await factory.build(BuildRequest(blueprint_id="recon-drone"))
+    reborn = Factory(factory.settings, catalog=factory.catalog).get(job.id)
+    assert reborn is not None
+    assert reborn.record.model_dump() == job.record.model_dump()
+    assert [e.seq for e in reborn.events.since(-1)] == [e.seq for e in job.events.since(-1)]
+    assert reborn.events.closed
+    assert reborn.board.spec == job.board.spec
+    assert reborn.workspace.read("README.md") == job.workspace.read("README.md")

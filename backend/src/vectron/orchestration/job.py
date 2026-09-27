@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel
 
 from vectron.domain.blueprint import Blueprint
 from vectron.domain.jobs import JobEvent, JobRecord, TaskRecord
@@ -12,6 +15,18 @@ from vectron.domain.spec import SystemSpec
 
 from .events import EventLog
 from .workspace import Workspace
+
+SNAPSHOT_FILE = "job.json"
+
+
+class JobSnapshot(BaseModel):
+    """What survives a server restart: the record, its event history and the spec."""
+
+    record: JobRecord
+    events: list[JobEvent]
+    options: dict[str, Any]
+    spec: SystemSpec | None
+    architect_notes: str = ""
 
 
 @dataclass
@@ -35,6 +50,29 @@ class Job:
     @property
     def id(self) -> str:
         return self.record.id
+
+    def save(self) -> None:
+        """Persist a finished job next to its workspace."""
+        snapshot = JobSnapshot(
+            record=self.record,
+            events=self.events.since(-1),
+            options=self.board.options,
+            spec=self.board.spec,
+            architect_notes=self.board.architect_notes,
+        )
+        (self.workspace.root / SNAPSHOT_FILE).write_text(snapshot.model_dump_json(), "utf-8")
+
+    @classmethod
+    def load(cls, root: Path) -> Job:
+        snapshot = JobSnapshot.model_validate_json((root / SNAPSHOT_FILE).read_text("utf-8"))
+        job = cls(snapshot.record, Workspace(root))
+        job.events = EventLog.restored(snapshot.events)
+        job.board = Blackboard(
+            options=snapshot.options,
+            spec=snapshot.spec,
+            architect_notes=snapshot.architect_notes,
+        )
+        return job
 
     def task(self, task_id: str) -> TaskRecord:
         for task in self.record.tasks:

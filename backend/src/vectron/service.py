@@ -6,6 +6,7 @@ Both the HTTP API and the CLI drive builds through this class.
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 
 from vectron.agents import default_agents
@@ -15,7 +16,10 @@ from vectron.config import Settings
 from vectron.domain.jobs import BuildRequest, JobRecord, LLMInfo
 from vectron.llm import LLMProvider, create_provider
 from vectron.orchestration import Job, Orchestrator
+from vectron.orchestration.job import SNAPSHOT_FILE
 from vectron.orchestration.workspace import Workspace
+
+log = logging.getLogger(__name__)
 
 
 class Factory:
@@ -38,6 +42,7 @@ class Factory:
             settings=self.settings,
         )
         self._jobs: dict[str, Job] = {}
+        self._restore()
 
     # -- jobs ---------------------------------------------------------------
 
@@ -59,13 +64,13 @@ class Factory:
     def submit(self, request: BuildRequest) -> Job:
         """Create a job and run it in the background on the current event loop."""
         job = self.create_job(request)
-        job.runner = asyncio.create_task(self.orchestrator.run(job), name=job.id)
+        job.runner = asyncio.create_task(self._run(job), name=job.id)
         return job
 
     async def build(self, request: BuildRequest) -> Job:
         """Create a job and run it to completion (CLI and tests)."""
         job = self.create_job(request)
-        await self.orchestrator.run(job)
+        await self._run(job)
         return job
 
     def get(self, job_id: str) -> Job | None:
@@ -73,6 +78,25 @@ class Factory:
 
     def jobs(self) -> list[Job]:
         return sorted(self._jobs.values(), key=lambda j: j.record.created_at, reverse=True)
+
+    async def _run(self, job: Job) -> None:
+        try:
+            await self.orchestrator.run(job)
+        finally:
+            try:
+                job.save()
+            except OSError as exc:
+                log.warning("could not persist %s: %s", job.id, exc)
+
+    def _restore(self) -> None:
+        """Reload finished jobs from earlier runs (e.g. after a dev-server reload)."""
+        for snapshot in sorted((self.settings.data_dir / "jobs").glob(f"*/{SNAPSHOT_FILE}")):
+            try:
+                job = Job.load(snapshot.parent)
+            except Exception as exc:  # a corrupt snapshot must not stop the server
+                log.warning("skipping unreadable job snapshot %s: %s", snapshot, exc)
+                continue
+            self._jobs[job.id] = job
 
     async def shutdown(self) -> None:
         runners = [j.runner for j in self._jobs.values() if j.runner and not j.runner.done()]

@@ -122,7 +122,7 @@ make lint           # ruff
 
 ## Status
 
-This is a skeleton. Jobs are kept in memory, Python is the only code target, and
-there is no authentication yet. It generates unclassified reference scaffolding
+This is a skeleton. Python is the only code target, jobs are stored as files
+instead of in a database, and there is no authentication yet. It generates unclassified reference scaffolding
 only. Before adding controlled technical data, review your export-control
 obligations (ITAR/EAR) and deployment requirements.

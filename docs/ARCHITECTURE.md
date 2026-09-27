@@ -148,6 +148,7 @@ Default model: `claude-opus-5` (`VECTRON_MODEL`), effort `medium`
 
 ## Known limits of the skeleton
 
-- Jobs live in memory; restarting the server forgets them (files stay on disk).
+- Finished jobs are saved to `<data dir>/jobs/<id>/job.json` and reloaded at startup;
+  a job that is running when the server stops is lost.
 - Python is the only code target, and generated tests are not run server-side.
 - No authentication or multi-tenancy.
