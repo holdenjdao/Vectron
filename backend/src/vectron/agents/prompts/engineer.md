@@ -28,3 +28,13 @@ Also write a pytest test file for the module: import the module via the absolute
 package path shown in the stub test, build it on a fresh `MessageBus`, drive it
 with messages and `tick`, and assert on what it publishes. Use only pytest, the
 standard library and the package itself.
+
+The `MessageBus` API is exactly: `subscribe(topic, handler)`,
+`unsubscribe(topic, handler)`, `publish(topic, message)`, `latest(topic)` (the
+most recent message on a topic, or None), `topics()`, and `published`, an int
+counter of all messages (not a method). To collect every output in a test,
+subscribe a list's `append` to the topic before driving the module.
+
+Only assert values you have worked out step by step from your own code (trace
+each handler and `tick` by hand); prefer checks on counts, ordering and ranges
+over long floating-point arithmetic, and use `pytest.approx` for floats.
