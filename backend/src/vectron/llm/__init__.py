@@ -23,8 +23,15 @@ def create_provider(settings: Settings) -> LLMProvider:
         try:
             from .anthropic_provider import AnthropicProvider
 
-            return AnthropicProvider(model=settings.model, effort=settings.effort)
+            provider = AnthropicProvider(model=settings.model, effort=settings.effort)
         except Exception as exc:  # misconfiguration should not stop the factory
             log.warning("Anthropic provider unavailable, using offline mode: %s", exc)
             return OfflineProvider(reason=f"(Anthropic provider failed to start: {exc})")
+        if not provider.has_credentials:
+            log.warning("VECTRON_LLM_PROVIDER=anthropic but no Anthropic credentials found")
+            return OfflineProvider(
+                reason="(Claude requested but no credentials found: set ANTHROPIC_API_KEY "
+                "or run `ant auth login`.)"
+            )
+        return provider
     return OfflineProvider(reason=f"(unknown VECTRON_LLM_PROVIDER {settings.llm_provider!r})")

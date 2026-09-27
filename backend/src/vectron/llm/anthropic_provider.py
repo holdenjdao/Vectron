@@ -33,6 +33,11 @@ class AnthropicProvider(LLMProvider):
         return True
 
     @property
+    def has_credentials(self) -> bool:
+        client = self.client
+        return any(getattr(client, attr, None) for attr in ("api_key", "auth_token", "credentials"))
+
+    @property
     def detail(self) -> str:
         return f"Claude via the Anthropic API ({self.model}, effort {self.effort or 'default'})."
 
@@ -67,6 +72,8 @@ class AnthropicProvider(LLMProvider):
             raise LLMError(f"Claude API error {exc.status_code}: {exc.message}") from exc
         except anthropic.APIConnectionError as exc:
             raise LLMError(f"could not reach the Claude API: {exc}") from exc
+        except anthropic.AnthropicError as exc:
+            raise LLMError(f"Claude client error: {exc}") from exc
 
         if message.stop_reason == "refusal":
             raise LLMError("Claude declined this request")

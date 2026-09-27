@@ -277,6 +277,8 @@ class SystemSpec(SpecModel):
         messages = {m.name for m in self.messages}
         _unique([m.name for m in self.messages], "message")
         _unique([t.name for t in self.topics], "topic")
+        # Generated handler names use the topic with dots as underscores; keep them unique.
+        _unique([t.name.replace(".", "_") for t in self.topics], "topic identifier")
         _unique([s.id for s in self.subsystems], "subsystem")
         _unique([m.id for _, m in self.iter_modules()], "module")
         _unique([m.class_name for _, m in self.iter_modules()], "module class name")

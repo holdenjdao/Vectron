@@ -90,9 +90,18 @@ async def test_unusable_responses_raise(client: FakeClient, message: str) -> Non
         await provider.generate_json(system="s", prompt="p", schema=SCHEMA)
 
 
-def test_provider_selection(tmp_path: Any) -> None:
+def test_provider_selection(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_PROFILE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+
     offline = create_provider(Settings(data_dir=tmp_path, llm_provider="offline"))
     assert not offline.enabled
+    no_key = create_provider(Settings(data_dir=tmp_path, llm_provider="anthropic"))
+    assert not no_key.enabled and "ANTHROPIC_API_KEY" in no_key.detail
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     claude = create_provider(Settings(data_dir=tmp_path, llm_provider="anthropic"))
     assert claude.enabled and claude.model == "claude-opus-5"
     unknown = create_provider(Settings(data_dir=tmp_path, llm_provider="nope"))
