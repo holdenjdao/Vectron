@@ -1,0 +1,46 @@
+"""In-process publish/subscribe message bus.
+
+Modules never call each other directly; they exchange typed messages through
+this bus. To move to a real transport (DDS / ROS 2, ZeroMQ, MAVLink over a
+radio) implement the same four methods and hand that object to the modules.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+from collections.abc import Callable
+from typing import Any
+
+Handler = Callable[[Any], None]
+
+
+class MessageBus:
+    """Synchronous topic-based bus that also latches the last message per topic."""
+
+    def __init__(self) -> None:
+        self._subscribers: dict[str, list[Handler]] = defaultdict(list)
+        self._latest: dict[str, Any] = {}
+        self.published = 0
+
+    def subscribe(self, topic: str, handler: Handler) -> None:
+        self._subscribers[topic].append(handler)
+
+    def unsubscribe(self, topic: str, handler: Handler) -> None:
+        handlers = self._subscribers.get(topic, [])
+        if handler in handlers:
+            handlers.remove(handler)
+
+    def publish(self, topic: str, message: Any) -> None:
+        """Deliver ``message`` to every subscriber of ``topic`` (depth-first)."""
+        self._latest[topic] = message
+        self.published += 1
+        for handler in tuple(self._subscribers.get(topic, ())):
+            handler(message)
+
+    def latest(self, topic: str) -> Any | None:
+        """Most recent message published on ``topic``, if any."""
+        return self._latest.get(topic)
+
+    def topics(self) -> list[str]:
+        """Topics that currently have at least one subscriber."""
+        return sorted(topic for topic, handlers in self._subscribers.items() if handlers)

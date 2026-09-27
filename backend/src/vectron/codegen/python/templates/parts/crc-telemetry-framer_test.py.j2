@@ -1,0 +1,53 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:crc-telemetry-framer" ~ ").") | docwrap(3, 0) }}"""
+
+import math
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import FlightMode, NavState, TelemetryFrame
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import (
+    {{ class_name }},
+    crc16_ccitt,
+    decode_frame,
+    encode_frame,
+    unpack_state,
+)
+
+STATE = NavState(lat_deg=48.1173, lon_deg=11.516667, alt_m=545.4, yaw=math.radians(90.0))
+
+
+def test_crc_check_value() -> None:
+    assert crc16_ccitt(b"123456789") == 0x29B1
+
+
+def test_frame_round_trip() -> None:
+    frame = encode_frame(42, b"payload")
+    assert decode_frame(frame) == (42, b"payload")
+
+
+def test_corrupted_frame_is_rejected() -> None:
+    frame = bytearray(encode_frame(7, b"payload"))
+    frame[6] ^= 0xFF
+    with pytest.raises(ValueError, match="CRC"):
+        decode_frame(bytes(frame))
+
+
+def test_emits_decodable_frames_at_downlink_rate() -> None:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    frames: list[TelemetryFrame] = []
+    bus.subscribe({{ pub("TelemetryFrame") | py }}, frames.append)
+    bus.publish({{ sub("FlightMode") | py }}, FlightMode(mode="MISSION"))
+    bus.publish({{ sub("NavState") | py }}, STATE)
+    period = 1.0 / module.config.downlink_hz
+    for step in range(5):
+        module.tick(step * period / 2)
+    assert [frame.seq for frame in frames] == [0, 1, 2]
+    seq, payload = decode_frame(frames[-1].payload)
+    decoded = unpack_state(payload)
+    assert seq == 2
+    assert decoded["lat_deg"] == pytest.approx(48.1173, abs=1e-6)
+    assert decoded["yaw_deg"] == pytest.approx(90.0)
+    assert decoded["mode"] == "MISSION"

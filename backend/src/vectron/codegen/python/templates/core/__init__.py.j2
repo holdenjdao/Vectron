@@ -1,0 +1,6 @@
+"""{{ ("Core runtime shared by every " ~ spec.name ~ " module: bus, module base class and messages.") | docwrap(3, 0) }}"""
+
+from .bus import MessageBus
+from .module import Module
+
+__all__ = ["MessageBus", "Module"]

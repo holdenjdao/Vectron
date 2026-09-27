@@ -1,0 +1,42 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:cylinder-geofence" ~ ").") | docwrap(3, 0) }}"""
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import GeofenceStatus, NavState
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}, {{ config_class }}
+
+HOME = NavState(lat_deg=48.0, lon_deg=11.0, alt_m=500.0, position_valid=True)
+
+
+def make() -> tuple[MessageBus, list[GeofenceStatus]]:
+    bus = MessageBus()
+    config = {{ config_class }}(radius_m=100.0, ceiling_m=50.0, home_lat_deg=0.0, home_lon_deg=0.0)
+    {{ class_name }}(bus, config).start()
+    statuses: list[GeofenceStatus] = []
+    bus.subscribe({{ pub("GeofenceStatus") | py }}, statuses.append)
+    bus.publish({{ sub("NavState") | py }}, HOME)
+    return bus, statuses
+
+
+def test_first_fix_becomes_home_and_is_inside() -> None:
+    _, statuses = make()
+    assert statuses[-1].inside
+    assert statuses[-1].distance_m == pytest.approx(0.0)
+    assert statuses[-1].margin_m == pytest.approx(50.0)
+
+
+def test_radius_breach() -> None:
+    bus, statuses = make()
+    far = NavState(lat_deg=48.002, lon_deg=11.0, alt_m=500.0, position_valid=True)
+    bus.publish({{ sub("NavState") | py }}, far)
+    assert not statuses[-1].inside
+    assert statuses[-1].breach == "RADIUS"
+
+
+def test_ceiling_breach() -> None:
+    bus, statuses = make()
+    high = NavState(lat_deg=48.0, lon_deg=11.0, alt_m=560.0, position_valid=True)
+    bus.publish({{ sub("NavState") | py }}, high)
+    assert statuses[-1].breach == "CEILING"
+    assert statuses[-1].margin_m == pytest.approx(-10.0)

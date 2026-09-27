@@ -1,0 +1,58 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:waypoint-sequencer" ~ ").") | docwrap(3, 0) }}"""
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.geo import bearing_deg, haversine_m
+from {{ package }}.core.messages import GuidanceTarget, MissionUpload, NavState
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}
+
+MISSION = MissionUpload(
+    lats_deg=(48.0000, 48.0010),
+    lons_deg=(11.0000, 11.0000),
+    alts_m=(50.0, 60.0),
+)
+
+
+def make() -> tuple[MessageBus, {{ class_name }}, list[GuidanceTarget]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    targets: list[GuidanceTarget] = []
+    bus.subscribe({{ pub("GuidanceTarget") | py }}, targets.append)
+    bus.publish({{ sub("MissionUpload") | py }}, MISSION)
+    return bus, module, targets
+
+
+def at(lat: float, lon: float) -> NavState:
+    return NavState(lat_deg=lat, lon_deg=lon, position_valid=True)
+
+
+def test_geodesy_helpers() -> None:
+    assert haversine_m(0.0, 0.0, 1.0, 0.0) == pytest.approx(111_195, rel=1e-3)
+    assert bearing_deg(0.0, 0.0, 1.0, 0.0) == pytest.approx(0.0)
+    assert bearing_deg(0.0, 0.0, 0.0, 1.0) == pytest.approx(90.0)
+
+
+def test_targets_first_waypoint_until_reached() -> None:
+    bus, _, targets = make()
+    bus.publish({{ sub("NavState") | py }}, at(47.9990, 11.0))
+    assert targets[-1].index == 0
+    assert targets[-1].distance_m == pytest.approx(111.2, abs=0.5)
+    assert targets[-1].bearing_deg == pytest.approx(0.0, abs=1e-6)
+
+
+def test_advances_and_completes() -> None:
+    bus, module, targets = make()
+    bus.publish({{ sub("NavState") | py }}, at(48.0000, 11.0))
+    assert targets[-1].index == 1
+    assert not targets[-1].complete
+    bus.publish({{ sub("NavState") | py }}, at(48.0010, 11.0))
+    assert targets[-1].complete
+    assert module.complete
+
+
+def test_ignores_invalid_position() -> None:
+    bus, _, targets = make()
+    bus.publish({{ sub("NavState") | py }}, NavState(lat_deg=48.0, lon_deg=11.0))
+    assert targets == []

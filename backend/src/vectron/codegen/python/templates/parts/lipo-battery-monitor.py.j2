@@ -1,0 +1,63 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+# Resting open-circuit voltage of one LiPo cell (V) against state of charge (%).
+SOC_CURVE: tuple[tuple[float, float], ...] = (
+    (3.27, 0.0),
+    (3.61, 5.0),
+    (3.69, 10.0),
+    (3.73, 20.0),
+    (3.77, 30.0),
+    (3.80, 40.0),
+    (3.84, 50.0),
+    (3.87, 60.0),
+    (3.95, 70.0),
+    (4.02, 80.0),
+    (4.11, 90.0),
+    (4.20, 100.0),
+)
+_CURVE_VOLTS = tuple(volts for volts, _ in SOC_CURVE)
+
+
+def soc_from_cell_voltage(volts: float) -> float:
+    """Piecewise-linear state of charge (%) for a resting cell voltage."""
+    if volts <= SOC_CURVE[0][0]:
+        return 0.0
+    if volts >= SOC_CURVE[-1][0]:
+        return 100.0
+    index = bisect.bisect_right(_CURVE_VOLTS, volts)
+    (v0, s0), (v1, s1) = SOC_CURVE[index - 1], SOC_CURVE[index]
+    return s0 + (s1 - s0) * (volts - v0) / (v1 - v0)
+{% endblock %}
+{% block init %}
+        self._filtered_v: float | None = None
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {{ "{" }}{{ sub("BatteryReading") | py }}: self.on_reading{{ "}" }}
+
+    def on_reading(self, reading: BatteryReading) -> None:
+        cfg = self.config
+        # Compensate voltage sag under load, then low-pass filter the result.
+        resting = reading.voltage_v + reading.current_a * cfg.pack_resistance_ohm
+        if self._filtered_v is None:
+            self._filtered_v = resting
+        else:
+            self._filtered_v += cfg.smoothing * (resting - self._filtered_v)
+        cell_v = self._filtered_v / cfg.cell_count
+        soc = soc_from_cell_voltage(cell_v)
+        state = "OK"
+        if soc <= cfg.critical_soc_pct:
+            state = "CRITICAL"
+        elif soc <= cfg.low_soc_pct:
+            state = "LOW"
+        status = BatteryStatus(
+            t=reading.t,
+            voltage_v=reading.voltage_v,
+            cell_voltage_v=cell_v,
+            soc_pct=soc,
+            state=state,
+        )
+        self.publish({{ pub("BatteryStatus") | py }}, status)
+{% endblock %}

@@ -1,0 +1,33 @@
+"""{{ ("Contract tests for " ~ class_name ~ " (stub: behaviour not implemented yet).") | docwrap(3, 0) }}
+
+These check wiring only. Add behavioural tests as you implement the module.
+"""
+
+from {{ package }}.core.bus import MessageBus
+{% if test_messages %}
+from {{ package }}.core.messages import {{ test_messages | join(", ") }}
+{% endif %}
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}
+
+
+def make() -> tuple[MessageBus, {{ class_name }}]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    return bus, module
+
+
+def test_subscribes_to_declared_topics() -> None:
+    bus, module = make()
+    assert set(module.subscribes) <= set(bus.topics())
+
+
+def test_accepts_inputs_and_ticks() -> None:
+    bus, module = make()
+{% for topic in module.subscribes %}
+    bus.publish({{ topic | py }}, {{ msgtype(topic) }}(t=0.0))
+{% endfor %}
+    module.tick(0.0)
+{% for topic in module.subscribes %}
+    assert module.latest_{{ topic_attr(topic) }} is not None
+{% endfor %}

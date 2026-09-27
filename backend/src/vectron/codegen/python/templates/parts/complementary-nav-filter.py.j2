@@ -1,0 +1,78 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+
+def accel_tilt(accel: tuple[float, float, float]) -> tuple[float, float]:
+    """Roll and pitch (rad) implied by the gravity vector in body axes (x fwd, y right, z down)."""
+    ax, ay, az = accel
+    roll = math.atan2(-ay, -az)
+    pitch = math.atan2(ax, math.hypot(ay, az))
+    return roll, pitch
+{% endblock %}
+{% block init %}
+        self.roll = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
+        self._last_imu_t: float | None = None
+        self._fix: GnssFix | None = None
+        self._velocity = (0.0, 0.0, 0.0)
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("ImuSample") | py }}: self.on_imu,
+            {{ sub("GnssFix") | py }}: self.on_fix,
+        }
+
+    def on_imu(self, sample: ImuSample) -> None:
+        """Propagate attitude with the gyro and correct roll/pitch toward gravity.
+
+        Small-angle Euler integration: good enough for near-hover flight. Swap in a
+        quaternion EKF for aggressive manoeuvres or magnetometer-aided heading.
+        """
+        acc_roll, acc_pitch = accel_tilt(sample.accel)
+        if self._last_imu_t is None:
+            self.roll, self.pitch = acc_roll, acc_pitch
+        else:
+            dt = max(0.0, sample.t - self._last_imu_t)
+            gyro_x, gyro_y, gyro_z = sample.gyro
+            alpha = self.config.alpha
+            self.roll = alpha * (self.roll + gyro_x * dt) + (1.0 - alpha) * acc_roll
+            self.pitch = alpha * (self.pitch + gyro_y * dt) + (1.0 - alpha) * acc_pitch
+            self.yaw = wrap_pi(self.yaw + gyro_z * dt)
+        self._last_imu_t = sample.t
+        self.publish({{ pub("NavState") | py }}, self.state(sample.t))
+
+    def on_fix(self, fix: GnssFix) -> None:
+        """Take position from valid fixes and differentiate them for velocity."""
+        if not fix.valid:
+            return
+        previous = self._fix
+        if previous is not None and fix.t > previous.t:
+            north, east, down = local_ned_offset(
+                previous.lat_deg,
+                previous.lon_deg,
+                previous.alt_m,
+                fix.lat_deg,
+                fix.lon_deg,
+                fix.alt_m,
+            )
+            dt = fix.t - previous.t
+            self._velocity = (north / dt, east / dt, down / dt)
+        self._fix = fix
+
+    def state(self, t: float) -> NavState:
+        fix = self._fix
+        return NavState(
+            t=t,
+            lat_deg=fix.lat_deg if fix else 0.0,
+            lon_deg=fix.lon_deg if fix else 0.0,
+            alt_m=fix.alt_m if fix else 0.0,
+            vel_ned=self._velocity,
+            roll=self.roll,
+            pitch=self.pitch,
+            yaw=self.yaw,
+            position_valid=fix is not None,
+        )
+{% endblock %}

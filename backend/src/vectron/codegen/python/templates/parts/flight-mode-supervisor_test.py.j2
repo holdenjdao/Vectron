@@ -1,0 +1,82 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:flight-mode-supervisor" ~ ").") | docwrap(3, 0) }}
+
+Paths through the state machine are derived from the system spec at build time.
+"""
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import (
+    BatteryStatus,
+    FlightMode,
+    GeofenceStatus,
+    OperatorCommand,
+)
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import (
+    INITIAL_MODE,
+    TRANSITIONS,
+    {{ class_name }},
+)
+
+
+def make() -> tuple[MessageBus, {{ class_name }}, list[FlightMode]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    modes: list[FlightMode] = []
+    bus.subscribe({{ pub("FlightMode") | py }}, modes.append)
+    module.start()
+    return bus, module, modes
+
+
+def command(bus: MessageBus, *names: str) -> None:
+    for name in names:
+        bus.publish({{ sub("OperatorCommand") | py }}, OperatorCommand(command=name, source="test"))
+
+
+def test_announces_initial_mode() -> None:
+    _, module, modes = make()
+    assert module.mode == INITIAL_MODE
+    assert modes[0].mode == INITIAL_MODE
+    assert modes[0].trigger == "INIT"
+
+
+def test_every_transition_from_initial_mode() -> None:
+    for (source, trigger), target in TRANSITIONS.items():
+        if source != INITIAL_MODE:
+            continue
+        bus, module, modes = make()
+        command(bus, trigger)
+        assert module.mode == target
+        assert modes[-1].accepted
+
+
+def test_rejects_invalid_command() -> None:
+    bus, module, modes = make()
+    command(bus, "NOT_A_COMMAND")
+    assert module.mode == INITIAL_MODE
+    assert not modes[-1].accepted
+{% if breach_path is not none %}
+
+
+def test_operators_cannot_inject_safety_events() -> None:
+    bus, module, modes = make()
+    command(bus, {{ breach_path | map("py") | join(", ") }}, "GEOFENCE_BREACH")
+    assert module.mode == {{ breach_source | py }}
+    assert not modes[-1].accepted
+
+
+def test_geofence_breach_triggers_{{ breach_target | lower }}() -> None:
+    bus, module, _ = make()
+    command(bus, {{ breach_path | map("py") | join(", ") }})
+    assert module.mode == {{ breach_source | py }}
+    bus.publish({{ sub("GeofenceStatus") | py }}, GeofenceStatus(inside=False, breach="RADIUS"))
+    assert module.mode == {{ breach_target | py }}
+{% endif %}
+{% if critical_path is not none %}
+
+
+def test_critical_battery_triggers_{{ critical_target | lower }}() -> None:
+    bus, module, _ = make()
+    command(bus, {{ critical_path | map("py") | join(", ") }})
+    assert module.mode == {{ critical_source | py }}
+    bus.publish({{ sub("BatteryStatus") | py }}, BatteryStatus(state="CRITICAL"))
+    assert module.mode == {{ critical_target | py }}
+{% endif %}

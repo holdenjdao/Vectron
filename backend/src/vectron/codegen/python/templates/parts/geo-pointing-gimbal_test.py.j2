@@ -1,0 +1,52 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:geo-pointing-gimbal" ~ ").") | docwrap(3, 0) }}"""
+
+import math
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import GimbalCommand, NavState, PointOfInterest
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}
+
+METRE_LAT = 1.0 / 111_195.0  # degrees of latitude per metre
+
+
+def make() -> tuple[MessageBus, list[GimbalCommand]]:
+    bus = MessageBus()
+    {{ class_name }}(bus).start()
+    commands: list[GimbalCommand] = []
+    bus.subscribe({{ pub("GimbalCommand") | py }}, commands.append)
+    return bus, commands
+
+
+def vehicle(yaw_deg: float = 0.0) -> NavState:
+    return NavState(
+        lat_deg=0.0, lon_deg=0.0, alt_m=100.0, yaw=math.radians(yaw_deg), position_valid=True
+    )
+
+
+def test_target_ahead_and_below() -> None:
+    bus, commands = make()
+    bus.publish({{ sub("NavState") | py }}, vehicle())
+    bus.publish({{ sub("PointOfInterest") | py }}, PointOfInterest(lat_deg=100 * METRE_LAT, alt_m=0.0))
+    assert commands[-1].pan_deg == pytest.approx(0.0, abs=1e-6)
+    assert commands[-1].tilt_deg == pytest.approx(-45.0, abs=0.01)
+    assert commands[-1].tracking
+
+
+def test_pan_is_relative_to_heading() -> None:
+    bus, commands = make()
+    east_target = PointOfInterest(lon_deg=100 * METRE_LAT, alt_m=100.0)
+    bus.publish({{ sub("PointOfInterest") | py }}, east_target)
+    bus.publish({{ sub("NavState") | py }}, vehicle(yaw_deg=0.0))
+    assert commands[-1].pan_deg == pytest.approx(90.0, abs=0.01)
+    bus.publish({{ sub("NavState") | py }}, vehicle(yaw_deg=90.0))
+    assert commands[-1].pan_deg == pytest.approx(0.0, abs=0.01)
+
+
+def test_tilt_is_limited() -> None:
+    bus, commands = make()
+    bus.publish({{ sub("NavState") | py }}, vehicle())
+    overhead = PointOfInterest(lat_deg=1 * METRE_LAT, alt_m=10_000.0)
+    bus.publish({{ sub("PointOfInterest") | py }}, overhead)
+    assert commands[-1].tilt_deg <= 30.0 + 1e-9

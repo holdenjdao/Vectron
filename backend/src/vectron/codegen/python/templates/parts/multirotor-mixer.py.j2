@@ -1,0 +1,68 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+# {{ motors | length }}-rotor {{ layout }} geometry: (label, angle from the nose in degrees measured
+# clockwise seen from above, rotor spin). Numbering runs clockwise from the nose and
+# matches the labels on the airframe drawing (diagrams/airframe-top.svg).
+MOTORS: tuple[tuple[str, float, str], ...] = (
+{% for motor in motors %}
+    ({{ motor.label | py }}, {{ motor.angle_deg | py }}, {{ motor.spin | py }}),
+{% endfor %}
+)
+
+
+def mix_factors(angle_deg: float, spin: str) -> tuple[float, float, float]:
+    """Roll, pitch and yaw contribution of one rotor (body axes: x fwd, y right, z down)."""
+    angle = math.radians(angle_deg)
+    roll = -math.sin(angle)  # raising left-side rotors rolls right (positive roll)
+    pitch = math.cos(angle)  # raising front rotors pitches the nose up
+    yaw = 1.0 if spin == "CCW" else -1.0  # a rotor's reaction torque opposes its spin
+    return roll, pitch, yaw
+
+
+FACTORS = tuple(mix_factors(angle, spin) for _, angle, spin in MOTORS)
+{% endblock %}
+{% block init %}
+        self.mode = self.config.disarmed_mode
+        self._torque: TorqueCommand | None = None
+{% endblock %}
+{% block body %}
+
+    @property
+    def armed(self) -> bool:
+        return self.mode != self.config.disarmed_mode
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("TorqueCommand") | py }}: self.on_torque,
+            {{ sub("FlightMode") | py }}: self.on_mode,
+        }
+
+    def on_torque(self, command: TorqueCommand) -> None:
+        self._torque = command
+
+    def on_mode(self, mode: FlightMode) -> None:
+        self.mode = mode.mode
+        if not self.armed:
+            self._torque = None
+
+    def tick(self, t: float) -> None:
+        outputs = MotorOutputs(t=t, outputs=self.mix(self._torque), armed=self.armed)
+        self.publish({{ pub("MotorOutputs") | py }}, outputs)
+
+    def mix(self, torque: TorqueCommand | None) -> tuple[float, ...]:
+        """Normalised motor commands in [0, 1]; all zero while disarmed (safety interlock)."""
+        if not self.armed:
+            return tuple(0.0 for _ in MOTORS)
+        idle = self.config.idle_throttle
+        if torque is None:
+            return tuple(idle for _ in MOTORS)
+        raw = [
+            torque.thrust + 0.5 * (torque.roll * roll + torque.pitch * pitch + torque.yaw * yaw)
+            for roll, pitch, yaw in FACTORS
+        ]
+        overshoot = max(raw) - 1.0
+        if overshoot > 0.0:  # keep attitude authority by giving up collective thrust
+            raw = [value - overshoot for value in raw]
+        return tuple(clamp(value, idle, 1.0) for value in raw)
+{% endblock %}

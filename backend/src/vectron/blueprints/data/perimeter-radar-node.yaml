@@ -1,0 +1,212 @@
+id: perimeter-radar-node
+name: Perimeter Radar Node
+designation: VX-PRN1
+category: sensor
+summary: >-
+  Unattended, solar-powered ground radar node for perimeter security: CFAR
+  detection, tracking, classification, zone alerts and a low-bandwidth mesh link.
+keywords: [radar, sensor, perimeter, security, base, fob, intrusion, detection, tracking,
+  surveillance, ground, unattended, ugs, node, mesh, alert, counter, uas]
+
+options:
+  - key: threshold_db
+    label: CFAR threshold
+    type: number
+    default: 12
+    min: 6
+    max: 30
+    step: 0.5
+    unit: dB
+    help: Detection threshold above the local noise estimate. Higher means fewer false alarms.
+    applies_to: [subsystems.sensing.modules.cfar_detector.config.threshold_db.default]
+  - key: eco_soc_pct
+    label: Eco mode below
+    type: number
+    default: 40
+    min: 10
+    max: 90
+    step: 5
+    unit: "%"
+    help: Battery level at which the node halves its sensing duty cycle.
+    applies_to: [subsystems.power.modules.power_manager.config.eco_soc_pct.default]
+
+spec:
+  package: perimeter_radar
+  description: >-
+    A tripod-mounted FMCW radar node for forward operating base perimeters. It runs
+    for weeks on solar power and reports only confirmed, classified intrusions over
+    a narrowband mesh network.
+
+  messages:
+    - name: RadarSweep
+      doc: One range profile from the radar front end.
+      fields:
+        - {name: azimuth_deg, type: float, unit: deg, doc: "Beam azimuth, clockwise from north."}
+        - {name: bin_size_m, type: float, unit: m, doc: "Range covered by one bin."}
+        - {name: power_db, type: "float[]", unit: dB, doc: "Received power per range bin."}
+    - name: Detection
+      doc: A single CFAR detection.
+      fields:
+        - {name: range_m, type: float, unit: m, doc: "Range to the detection."}
+        - {name: azimuth_deg, type: float, unit: deg, doc: "Azimuth of the detection."}
+        - {name: snr_db, type: float, unit: dB, doc: "Signal above the local noise estimate."}
+    - name: Track
+      doc: A confirmed or tentative track.
+      fields:
+        - {name: track_id, type: int, doc: "Track number."}
+        - {name: range_m, type: float, unit: m, doc: "Smoothed range."}
+        - {name: azimuth_deg, type: float, unit: deg, doc: "Smoothed azimuth."}
+        - {name: speed_mps, type: float, unit: m/s, doc: "Estimated ground speed."}
+        - {name: heading_deg, type: float, unit: deg, doc: "Estimated heading."}
+        - {name: hits, type: int, doc: "Detections associated so far."}
+        - {name: confirmed, type: bool, doc: "True after enough consistent hits."}
+    - name: Classification
+      doc: Target class estimate for a track.
+      fields:
+        - {name: track_id, type: int, doc: "Track number."}
+        - {name: label, type: str, doc: "PERSON, VEHICLE, ANIMAL, UAS or UNKNOWN."}
+        - {name: confidence, type: float, doc: "Confidence, 0 to 1."}
+    - name: IntrusionAlert
+      doc: An intrusion into a protected zone.
+      fields:
+        - {name: track_id, type: int, doc: "Track number."}
+        - {name: label, type: str, doc: "Target class."}
+        - {name: zone, type: str, doc: "Zone that was entered."}
+        - {name: severity, type: str, doc: "LOW, MEDIUM or HIGH."}
+    - name: PowerReading
+      doc: Solar and battery measurements.
+      fields:
+        - {name: voltage_v, type: float, unit: V, doc: "Battery voltage."}
+        - {name: current_a, type: float, unit: A, doc: "Net battery current (negative = charging)."}
+        - {name: solar_w, type: float, unit: W, doc: "Solar panel output."}
+    - name: PowerState
+      doc: Energy budget decision.
+      fields:
+        - {name: mode, type: str, default: NORMAL, doc: "NORMAL, ECO or CRITICAL."}
+        - {name: soc_pct, type: float, unit: "%", doc: "Estimated state of charge."}
+        - {name: duty_cycle, type: float, default: 1.0, doc: "Fraction of sweeps to process, 0 to 1."}
+    - name: MeshPacket
+      doc: A compact report for the mesh radio.
+      fields:
+        - {name: dest, type: str, doc: "Destination node."}
+        - {name: payload, type: bytes, doc: "Encoded report."}
+
+  topics:
+    - {name: sensor.sweep, message: RadarSweep, external: true, doc: "Range profiles from the radar front end at 10 Hz."}
+    - {name: power.reading, message: PowerReading, external: true, doc: "Charge controller measurements."}
+    - {name: sensor.detections, message: Detection, doc: "CFAR detections."}
+    - {name: tracks.active, message: Track, doc: "Track updates."}
+    - {name: tracks.classified, message: Classification, doc: "Track classifications."}
+    - {name: alerts.intrusion, message: IntrusionAlert, doc: "Zone intrusion alerts."}
+    - {name: power.state, message: PowerState, doc: "Energy budget and duty cycle."}
+    - {name: mesh.tx, message: MeshPacket, doc: "Reports for the mesh radio."}
+
+  subsystems:
+    - id: sensing
+      name: Sensing
+      description: Signal processing on raw radar sweeps.
+      modules:
+        - id: cfar_detector
+          name: CFAR Detector
+          responsibility: Run cell-averaging CFAR over each sweep to extract detections at a constant false-alarm rate.
+          subscribes: [sensor.sweep, power.state]
+          publishes: [sensor.detections]
+          config:
+            - {name: guard_cells, type: int, default: 2, doc: "Guard cells either side of the cell under test."}
+            - {name: training_cells, type: int, default: 8, doc: "Training cells either side for the noise estimate."}
+            - {name: threshold_db, type: float, default: 12.0, unit: dB, doc: "Detection threshold above the noise estimate."}
+    - id: tracking
+      name: Tracking & Classification
+      description: From detections to classified tracks.
+      modules:
+        - id: tracker
+          name: Tracker
+          responsibility: Associate detections into tracks with gating and alpha-beta smoothing, confirming after repeated hits.
+          subscribes: [sensor.detections]
+          publishes: [tracks.active]
+          config:
+            - {name: gate_m, type: float, default: 15.0, unit: m, doc: "Association gate."}
+            - {name: confirm_hits, type: int, default: 3, doc: "Hits needed to confirm a track."}
+        - id: classifier
+          name: Target Classifier
+          responsibility: Classify confirmed tracks as person, vehicle, animal or UAS from speed and motion features.
+          subscribes: [tracks.active]
+          publishes: [tracks.classified]
+    - id: alerting
+      name: Alerting & Reporting
+      description: Deciding what matters and telling C2 about it.
+      modules:
+        - id: zone_monitor
+          name: Zone Monitor
+          responsibility: Check classified tracks against protected zones and raise graded intrusion alerts.
+          subscribes: [tracks.active, tracks.classified]
+          publishes: [alerts.intrusion]
+        - id: mesh_reporter
+          name: Mesh Reporter
+          responsibility: Compress intrusion alerts and node health into small mesh packets for the C2 node.
+          subscribes: [alerts.intrusion, power.state]
+          publishes: [mesh.tx]
+    - id: power
+      name: Power
+      description: Weeks of unattended operation on solar power.
+      modules:
+        - id: power_manager
+          name: Power Manager
+          responsibility: Estimate battery state from solar and load measurements and set the sensing duty cycle.
+          subscribes: [power.reading]
+          publishes: [power.state]
+          state_machine: node_modes
+          config:
+            - {name: eco_soc_pct, type: float, default: 40.0, unit: "%", doc: "Enter ECO mode below this charge."}
+            - {name: critical_soc_pct, type: float, default: 15.0, unit: "%", doc: "Enter CRITICAL mode below this charge."}
+
+  state_machines:
+    - id: node_modes
+      title: Node operating modes
+      initial: BOOT
+      states:
+        - {name: BOOT, doc: "Power-on self test."}
+        - {name: STANDBY, doc: "Healthy, radar idle."}
+        - {name: SURVEIL, doc: "Radar sweeping, full duty cycle."}
+        - {name: ALERT, doc: "Intrusion in progress, reporting at high rate."}
+        - {name: ECO, doc: "Reduced duty cycle to save energy."}
+        - {name: FAULT, doc: "Hardware fault, reporting health only."}
+      transitions:
+        - {source: BOOT, trigger: SELF_TEST_OK, target: STANDBY}
+        - {source: BOOT, trigger: SELF_TEST_FAIL, target: FAULT}
+        - {source: STANDBY, trigger: ACTIVATE, target: SURVEIL}
+        - {source: SURVEIL, trigger: INTRUSION, target: ALERT}
+        - {source: ALERT, trigger: ALL_CLEAR, target: SURVEIL}
+        - {source: SURVEIL, trigger: LOW_POWER, target: ECO}
+        - {source: ECO, trigger: POWER_OK, target: SURVEIL}
+        - {source: ECO, trigger: INTRUSION, target: ALERT}
+        - {source: SURVEIL, trigger: FAULT, target: FAULT}
+        - {source: ALERT, trigger: FAULT, target: FAULT}
+        - {source: FAULT, trigger: RESET, target: BOOT}
+
+  sequences:
+    - id: intrusion_response
+      title: Intrusion detection to C2 report
+      participants:
+        - {id: radar, label: Radar front end, kind: actor}
+        - {id: cfar_detector, label: CFAR Detector}
+        - {id: tracker, label: Tracker}
+        - {id: classifier, label: Target Classifier}
+        - {id: zone_monitor, label: Zone Monitor}
+        - {id: mesh_reporter, label: Mesh Reporter}
+        - {id: c2, label: C2 node, kind: actor}
+      steps:
+        - {source: radar, target: cfar_detector, message: "RadarSweep (sensor.sweep)"}
+        - {source: cfar_detector, target: tracker, message: "Detection snr=18 dB"}
+        - {source: tracker, target: classifier, message: "Track confirmed after 3 hits"}
+        - {source: classifier, target: zone_monitor, message: "Classification PERSON 0.91"}
+        - {source: zone_monitor, target: mesh_reporter, message: "IntrusionAlert HIGH zone=NORTH-FENCE"}
+        - {source: mesh_reporter, target: c2, message: "MeshPacket (mesh.tx)", note: "under 50 bytes on air"}
+
+  simulation:
+    - topic: sensor.sweep
+      rate_hz: 10
+      fields: {azimuth_deg: 0.0, bin_size_m: 1.5, power_db: [3.0, 2.5, 3.1, 2.8, 19.5, 3.2, 2.9, 3.0]}
+    - topic: power.reading
+      rate_hz: 1
+      fields: {voltage_v: 12.9, current_a: -0.4, solar_w: 18.0}

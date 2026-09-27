@@ -1,0 +1,62 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:pid-attitude-controller" ~ ").") | docwrap(3, 0) }}"""
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import AttitudeSetpoint, NavState, TorqueCommand
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}, Pid
+
+
+def make() -> tuple[MessageBus, {{ class_name }}, list[TorqueCommand]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    commands: list[TorqueCommand] = []
+    bus.subscribe({{ pub("TorqueCommand") | py }}, commands.append)
+    return bus, module, commands
+
+
+def feed(bus: MessageBus, setpoint: AttitudeSetpoint, state: NavState) -> None:
+    bus.publish({{ sub("AttitudeSetpoint") | py }}, setpoint)
+    bus.publish({{ sub("NavState") | py }}, state)
+
+
+def test_waits_for_inputs() -> None:
+    _, module, commands = make()
+    module.tick(0.0)
+    assert commands == []
+
+
+def test_level_hover_needs_no_torque() -> None:
+    bus, module, commands = make()
+    feed(bus, AttitudeSetpoint(thrust=0.5), NavState())
+    module.tick(0.0)
+    module.tick(0.01)
+    assert commands[-1].roll == pytest.approx(0.0)
+    assert commands[-1].pitch == pytest.approx(0.0)
+    assert commands[-1].thrust == pytest.approx(0.5)
+
+
+def test_roll_error_produces_corrective_torque() -> None:
+    bus, module, commands = make()
+    feed(bus, AttitudeSetpoint(roll=0.1, thrust=0.5), NavState(roll=0.0))
+    module.tick(0.0)
+    assert commands[-1].roll > 0.0
+    feed(bus, AttitudeSetpoint(roll=0.0, thrust=0.5), NavState(roll=0.1))
+    module.tick(0.01)
+    assert commands[-1].roll < 0.0
+
+
+def test_output_is_saturated() -> None:
+    bus, module, commands = make()
+    feed(bus, AttitudeSetpoint(pitch=3.0, thrust=2.0), NavState())
+    module.tick(0.0)
+    assert commands[-1].pitch == pytest.approx(module.config.max_torque)
+    assert commands[-1].thrust == pytest.approx(1.0)
+
+
+def test_pid_integrator_is_clamped() -> None:
+    pid = Pid(kp=0.0, ki=1.0, kd=0.0, integral_limit=0.2)
+    for _ in range(100):
+        pid.update(1.0, 0.1)
+    assert pid.integral == pytest.approx(0.2)

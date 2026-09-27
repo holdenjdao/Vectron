@@ -1,0 +1,49 @@
+{% extends "module/base.py.j2" %}
+{% block init %}
+        self.waypoints: list[tuple[float, float, float]] = []
+        self.index = 0
+        self.complete = False
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("MissionUpload") | py }}: self.on_mission,
+            {{ sub("NavState") | py }}: self.on_state,
+        }
+
+    def on_mission(self, mission: MissionUpload) -> None:
+        """Replace the active mission; mismatched array lengths are truncated."""
+        self.waypoints = list(
+            zip(mission.lats_deg, mission.lons_deg, mission.alts_m, strict=False)
+        )
+        self.index = 0
+        self.complete = not self.waypoints
+
+    def on_state(self, state: NavState) -> None:
+        if not self.waypoints or not state.position_valid:
+            return
+        distance = self._distance_to_active(state)
+        if distance <= self.config.acceptance_radius_m and not self.complete:
+            if self.index + 1 < len(self.waypoints):
+                self.index += 1
+                distance = self._distance_to_active(state)
+            else:
+                self.complete = True
+        lat, lon, alt = self.waypoints[self.index]
+        target = GuidanceTarget(
+            t=state.t,
+            index=self.index,
+            lat_deg=lat,
+            lon_deg=lon,
+            alt_m=alt,
+            distance_m=distance,
+            bearing_deg=bearing_deg(state.lat_deg, state.lon_deg, lat, lon),
+            complete=self.complete,
+        )
+        self.publish({{ pub("GuidanceTarget") | py }}, target)
+
+    def _distance_to_active(self, state: NavState) -> float:
+        lat, lon, _ = self.waypoints[self.index]
+        return haversine_m(state.lat_deg, state.lon_deg, lat, lon)
+{% endblock %}

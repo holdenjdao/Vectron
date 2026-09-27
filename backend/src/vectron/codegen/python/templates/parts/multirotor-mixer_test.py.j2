@@ -1,0 +1,71 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:multirotor-mixer" ~ ", " ~ layout ~ ").") | docwrap(3, 0) }}"""
+
+import math
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import FlightMode, MotorOutputs, TorqueCommand
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import MOTORS, {{ class_name }}
+
+
+def make(mode: str | None = "ARMED") -> tuple[MessageBus, {{ class_name }}, list[MotorOutputs]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    outputs: list[MotorOutputs] = []
+    bus.subscribe({{ pub("MotorOutputs") | py }}, outputs.append)
+    if mode is not None:
+        bus.publish({{ sub("FlightMode") | py }}, FlightMode(mode=mode))
+    return bus, module, outputs
+
+
+def side(angle_deg: float) -> float:
+    return math.sin(math.radians(angle_deg))
+
+
+def test_motor_count_matches_frame() -> None:
+    assert len(MOTORS) == {{ motors | length }}
+
+
+def test_disarmed_outputs_are_zero() -> None:
+    bus, module, outputs = make(mode=None)
+    bus.publish({{ sub("TorqueCommand") | py }}, TorqueCommand(thrust=0.8, roll=0.5))
+    module.tick(0.0)
+    assert not outputs[-1].armed
+    assert all(value == 0.0 for value in outputs[-1].outputs)
+
+
+def test_collective_thrust_is_shared_equally() -> None:
+    bus, module, outputs = make()
+    bus.publish({{ sub("TorqueCommand") | py }}, TorqueCommand(thrust=0.5))
+    module.tick(0.0)
+    assert outputs[-1].outputs == pytest.approx([0.5] * len(MOTORS))
+
+
+def test_positive_roll_raises_left_rotors() -> None:
+    bus, module, outputs = make()
+    bus.publish({{ sub("TorqueCommand") | py }}, TorqueCommand(thrust=0.5, roll=0.2))
+    module.tick(0.0)
+    for (_, angle, _), value in zip(MOTORS, outputs[-1].outputs, strict=True):
+        if side(angle) < -1e-9:
+            assert value > 0.5
+        elif side(angle) > 1e-9:
+            assert value < 0.5
+
+
+def test_positive_yaw_raises_counter_clockwise_rotors() -> None:
+    bus, module, outputs = make()
+    bus.publish({{ sub("TorqueCommand") | py }}, TorqueCommand(thrust=0.5, yaw=0.2))
+    module.tick(0.0)
+    for (_, _, spin), value in zip(MOTORS, outputs[-1].outputs, strict=True):
+        assert (value > 0.5) == (spin == "CCW")
+
+
+def test_saturation_preserves_attitude_authority() -> None:
+    bus, module, outputs = make()
+    bus.publish({{ sub("TorqueCommand") | py }}, TorqueCommand(thrust=1.0, pitch=0.4))
+    module.tick(0.0)
+    values = outputs[-1].outputs
+    assert max(values) == pytest.approx(1.0)
+    assert max(values) - min(values) > 0.1

@@ -1,0 +1,204 @@
+id: ground-control-station
+name: Ground Control Station
+designation: VX-GCS1
+category: c2
+summary: >-
+  Command and control software for small UAS: telemetry decoding, track table,
+  mission planning, command uplink and prioritised operator alerts.
+keywords: [gcs, ground, station, control, command, c2, operator, console, uplink, datalink,
+  telemetry, mission, planning, tracks, map, situational, awareness]
+
+options:
+  - key: max_tracks
+    label: Tracked vehicles
+    type: number
+    default: 16
+    min: 1
+    max: 256
+    step: 1
+    help: Capacity of the track table.
+    applies_to: [subsystems.situational_awareness.modules.track_manager.config.max_tracks.default]
+  - key: stale_after_s
+    label: Track stale timeout
+    type: number
+    default: 3
+    min: 0.5
+    max: 60
+    step: 0.5
+    unit: s
+    applies_to: [subsystems.situational_awareness.modules.track_manager.config.stale_after_s.default]
+
+spec:
+  package: ground_control
+  description: >-
+    Runs on a rugged laptop at the operator's position. Datalink handling is
+    isolated from situational awareness and alerting so each can be certified
+    and replaced independently.
+
+  messages:
+    - name: RadioPacket
+      doc: Raw frame received from the datalink modem.
+      fields:
+        - {name: link_id, type: str, doc: "Radio link identifier."}
+        - {name: rssi_dbm, type: float, unit: dBm, doc: "Received signal strength."}
+        - {name: frame, type: bytes, doc: "Frame bytes including sync and CRC."}
+    - name: VehicleTelemetry
+      doc: Decoded vehicle state from one downlink frame.
+      fields:
+        - {name: vehicle_id, type: str, doc: "Vehicle call sign."}
+        - {name: seq, type: int, doc: "Frame sequence number."}
+        - {name: lat_deg, type: float, unit: deg, doc: "Latitude."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Longitude."}
+        - {name: alt_m, type: float, unit: m, doc: "Altitude above mean sea level."}
+        - {name: yaw_deg, type: float, unit: deg, doc: "Heading."}
+        - {name: soc_pct, type: float, unit: "%", doc: "Battery state of charge."}
+        - {name: mode, type: str, doc: "Vehicle flight mode."}
+    - name: TrackUpdate
+      doc: Smoothed track for one vehicle.
+      fields:
+        - {name: track_id, type: str, doc: "Track identifier (vehicle call sign)."}
+        - {name: lat_deg, type: float, unit: deg, doc: "Latitude."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Longitude."}
+        - {name: alt_m, type: float, unit: m, doc: "Altitude."}
+        - {name: course_deg, type: float, unit: deg, doc: "Course over ground."}
+        - {name: speed_mps, type: float, unit: m/s, doc: "Ground speed."}
+        - {name: stale, type: bool, doc: "True when no telemetry arrived recently."}
+    - name: OperatorAction
+      doc: An action taken by the operator in the console UI.
+      fields:
+        - {name: action, type: str, doc: "PLAN, UPLOAD, COMMAND or ACK_ALERT."}
+        - {name: target, type: str, doc: "Vehicle or alert the action applies to."}
+        - {name: argument, type: str, doc: "Command name or other parameter."}
+        - {name: lats_deg, type: "float[]", unit: deg, doc: "Waypoint latitudes for PLAN."}
+        - {name: lons_deg, type: "float[]", unit: deg, doc: "Waypoint longitudes for PLAN."}
+        - {name: alts_m, type: "float[]", unit: m, doc: "Waypoint altitudes for PLAN."}
+    - name: MissionPlan
+      doc: A validated mission ready for upload.
+      fields:
+        - {name: vehicle_id, type: str, doc: "Target vehicle."}
+        - {name: lats_deg, type: "float[]", unit: deg, doc: "Waypoint latitudes."}
+        - {name: lons_deg, type: "float[]", unit: deg, doc: "Waypoint longitudes."}
+        - {name: alts_m, type: "float[]", unit: m, doc: "Waypoint altitudes."}
+        - {name: valid, type: bool, doc: "True when the plan passed validation."}
+    - name: UplinkPacket
+      doc: Encoded frame for transmission to a vehicle.
+      fields:
+        - {name: vehicle_id, type: str, doc: "Destination vehicle."}
+        - {name: seq, type: int, doc: "Uplink sequence number."}
+        - {name: frame, type: bytes, doc: "Frame bytes including sync and CRC."}
+    - name: Alert
+      doc: An operator alert.
+      fields:
+        - {name: severity, type: str, doc: "INFO, CAUTION or WARNING."}
+        - {name: source, type: str, doc: "Vehicle or subsystem that raised it."}
+        - {name: text, type: str, doc: "Human-readable description."}
+        - {name: active, type: bool, default: true, doc: "False once cleared."}
+
+  topics:
+    - {name: radio.rx, message: RadioPacket, external: true, doc: "Frames from the datalink modem."}
+    - {name: ui.action, message: OperatorAction, external: true, doc: "Operator input from the console UI."}
+    - {name: link.telemetry, message: VehicleTelemetry, doc: "Decoded, CRC-checked telemetry."}
+    - {name: sa.tracks, message: TrackUpdate, doc: "Track table updates."}
+    - {name: mission.plan, message: MissionPlan, doc: "Validated missions."}
+    - {name: radio.tx, message: UplinkPacket, doc: "Frames for the datalink modem."}
+    - {name: alerts.active, message: Alert, doc: "Operator alerts."}
+
+  subsystems:
+    - id: datalink
+      name: Datalink
+      description: Everything that touches the radio.
+      modules:
+        - id: telemetry_receiver
+          name: Telemetry Receiver
+          responsibility: Validate CRC-16 downlink frames and decode them into vehicle telemetry.
+          subscribes: [radio.rx]
+          publishes: [link.telemetry]
+          state_machine: link_state
+        - id: command_uplink
+          name: Command Uplink
+          responsibility: Encode operator commands and mission plans into sequenced, CRC-protected uplink frames.
+          subscribes: [ui.action, mission.plan]
+          publishes: [radio.tx]
+    - id: situational_awareness
+      name: Situational Awareness
+      description: The common operating picture.
+      modules:
+        - id: track_manager
+          name: Track Manager
+          responsibility: Maintain one smoothed track per vehicle with course, speed and staleness.
+          subscribes: [link.telemetry]
+          publishes: [sa.tracks]
+          rate_hz: 5
+          config:
+            - {name: max_tracks, type: int, default: 16, doc: "Capacity of the track table."}
+            - {name: stale_after_s, type: float, default: 3.0, unit: s, doc: "Mark a track stale after this long without telemetry."}
+    - id: mission_planning
+      name: Mission Planning
+      description: Turns operator intent into safe, valid missions.
+      modules:
+        - id: mission_editor
+          name: Mission Editor
+          responsibility: Build waypoint missions from operator input and validate altitude and spacing limits.
+          subscribes: [ui.action]
+          publishes: [mission.plan]
+          config:
+            - {name: max_altitude_m, type: float, default: 120.0, unit: m, doc: "Highest permitted waypoint above launch."}
+    - id: alerting
+      name: Alerting
+      description: Prioritised, acknowledgeable operator alerts.
+      modules:
+        - id: alert_manager
+          name: Alert Manager
+          responsibility: Raise and clear prioritised alerts for low battery, stale tracks, failsafe modes and link loss.
+          subscribes: [link.telemetry, sa.tracks, ui.action]
+          publishes: [alerts.active]
+
+  state_machines:
+    - id: link_state
+      title: Datalink state
+      initial: DISCONNECTED
+      states:
+        - {name: DISCONNECTED, doc: "No link configured."}
+        - {name: CONNECTING, doc: "Waiting for the first valid frame."}
+        - {name: CONNECTED, doc: "Frames arriving with acceptable loss."}
+        - {name: DEGRADED, doc: "Packet loss above threshold."}
+        - {name: LOST, doc: "No frames within the timeout."}
+      transitions:
+        - {source: DISCONNECTED, trigger: CONNECT, target: CONNECTING}
+        - {source: CONNECTING, trigger: FRAME_OK, target: CONNECTED}
+        - {source: CONNECTING, trigger: TIMEOUT, target: DISCONNECTED}
+        - {source: CONNECTED, trigger: PACKET_LOSS, target: DEGRADED}
+        - {source: DEGRADED, trigger: RECOVERED, target: CONNECTED}
+        - {source: DEGRADED, trigger: TIMEOUT, target: LOST}
+        - {source: CONNECTED, trigger: TIMEOUT, target: LOST}
+        - {source: LOST, trigger: FRAME_OK, target: CONNECTED}
+        - {source: CONNECTED, trigger: DISCONNECT, target: DISCONNECTED}
+        - {source: LOST, trigger: DISCONNECT, target: DISCONNECTED}
+
+  sequences:
+    - id: mission_upload
+      title: Plan, upload and monitor a mission
+      participants:
+        - {id: operator, label: Operator, kind: actor}
+        - {id: mission_editor, label: Mission Editor}
+        - {id: command_uplink, label: Command Uplink}
+        - {id: vehicle, label: Vehicle (VX-RQ1), kind: actor}
+        - {id: telemetry_receiver, label: Telemetry Receiver}
+        - {id: track_manager, label: Track Manager}
+        - {id: alert_manager, label: Alert Manager}
+      steps:
+        - {source: operator, target: mission_editor, message: "OperatorAction PLAN (ui.action)"}
+        - {source: mission_editor, target: command_uplink, message: "MissionPlan valid (mission.plan)"}
+        - {source: command_uplink, target: vehicle, message: "UplinkPacket (radio.tx)", note: "CRC-16 framed, sequenced"}
+        - {source: vehicle, target: telemetry_receiver, message: "RadioPacket (radio.rx)"}
+        - {source: telemetry_receiver, target: track_manager, message: "VehicleTelemetry (link.telemetry)"}
+        - {source: track_manager, target: alert_manager, message: "TrackUpdate (sa.tracks)"}
+        - {source: alert_manager, target: operator, message: "Alert (alerts.active)", kind: reply}
+
+  simulation:
+    - topic: radio.rx
+      rate_hz: 5
+      fields: {link_id: radio-1, rssi_dbm: -71.5, frame: "demo frame"}
+    - topic: ui.action
+      at_s: 0.5
+      fields: {action: PLAN, target: VX-RQ1-01, lats_deg: [48.118, 48.119], lons_deg: [11.5167, 11.5185], alts_m: [60, 60]}

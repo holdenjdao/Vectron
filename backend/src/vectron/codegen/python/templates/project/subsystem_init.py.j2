@@ -1,0 +1,10 @@
+"""{{ (subsystem.name ~ " subsystem. " ~ subsystem.description) | docwrap(3, 0) }}
+
+Modules:
+{% for module in subsystem.modules %}
+    {{ (module.id ~ ": " ~ module.responsibility) | docwrap(4, 8) }}
+{% endfor %}
+
+Modules are imported from their own files (not re-exported here) so each one can
+be shipped and tested on its own.
+"""
