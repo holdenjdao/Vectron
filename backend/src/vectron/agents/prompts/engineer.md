@@ -32,7 +32,7 @@ standard library and the package itself.
 The `MessageBus` API is exactly: `subscribe(topic, handler)`,
 `unsubscribe(topic, handler)`, `publish(topic, message)`, `latest(topic)` (the
 most recent message on a topic, or None), `topics()`, and `published`, an int
-counter of all messages (not a method). To collect every output in a test,
+counter of every message on every topic, including the ones your test publishes (not a method). To collect every output in a test,
 subscribe a list's `append` to the topic before driving the module.
 
 Only assert values you have worked out step by step from your own code (trace
