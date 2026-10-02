@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       // Mermaid is lazy-loaded and ships a few large diagram chunks; none load on the catalog.
       chunkSizeWarningLimit: 1600,
+      // Two pages: the landing page at / and the factory app at /app/.
+      rollupOptions: { input: { landing: "index.html", app: "app/index.html" } },
     },
   };
 });

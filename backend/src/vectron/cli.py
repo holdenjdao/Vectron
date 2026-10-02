@@ -92,10 +92,18 @@ FRONTEND_DIR = Path(__file__).resolve().parents[3] / "frontend"
 
 def _ui_is_stale(frontend: Path) -> bool:
     """True when frontend/dist is missing or older than any UI source file."""
-    built = frontend / "dist" / "index.html"
+    built = frontend / "dist" / "app" / "index.html"
     if not built.is_file():
         return True
-    sources = [frontend / "index.html", frontend / "package.json", *(frontend / "src").rglob("*")]
+    sources = [
+        frontend / "index.html",
+        frontend / "app" / "index.html",
+        frontend / "package.json",
+        frontend / "vite.config.ts",
+        *(frontend / "src").rglob("*"),
+        *(frontend / "landing").rglob("*"),
+        *(frontend / "public").rglob("*"),
+    ]
     newest = max((f.stat().st_mtime for f in sources if f.is_file()), default=0.0)
     return newest > built.stat().st_mtime
 

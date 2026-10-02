@@ -61,8 +61,8 @@ def test_ui_staleness(tmp_path: Path) -> None:
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "main.tsx").write_text("x")
     assert _ui_is_stale(tmp_path)  # never built
-    (tmp_path / "dist").mkdir()
-    built = tmp_path / "dist" / "index.html"
+    (tmp_path / "dist" / "app").mkdir(parents=True)
+    built = tmp_path / "dist" / "app" / "index.html"
     built.write_text("<html>")
     os.utime(built, (time.time() + 10, time.time() + 10))
     assert not _ui_is_stale(tmp_path)

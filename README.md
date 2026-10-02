@@ -46,7 +46,7 @@ make install        # backend (uv) + frontend (npm) dependencies
 make dev            # API on :8000 and UI on http://localhost:5173
 ```
 
-Open http://localhost:5173 and press **Build** on a blueprint. `make dev` adds a
+Open http://localhost:5173 (landing page) and press **Launch Vectron**, or go straight to http://localhost:5173/app/, then press **Build** on a blueprint. `make dev` adds a
 small per-task delay (`PACING=0.4`) so you can watch the agents work. Use
 `make dev PACING=0` for full speed. The REST API is documented at
 http://localhost:8000/docs. `make serve` builds the UI and serves everything
