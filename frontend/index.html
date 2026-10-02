@@ -4,23 +4,366 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0d0d0f" />
     <meta name="description" content="Vectron: a software factory where agents design systems and build modular code." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Vectron</title>
-    <style>
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #070b10;
-             color: #d7e3ee; font: 16px/1.5 Inter, "Segoe UI", Roboto, system-ui, sans-serif; }
-      main { text-align: center; padding: 16px; }
-      h1 { font-weight: 300; font-size: clamp(2rem, 6vw, 3.5rem); margin: 0 0 0.5rem; }
-      a { display: inline-block; margin-top: 1.5rem; padding: 0.7rem 1.4rem; border: 1px solid #38e0a0;
-          color: #38e0a0; text-decoration: none; letter-spacing: 0.08em; text-transform: uppercase; }
-    </style>
+    <link rel="stylesheet" href="./landing/landing.css" />
+    <script type="module" src="./landing/landing.js"></script>
   </head>
   <body>
-    <main>
-      <h1>Vectron</h1>
-      <p>Describe a system. A crew of agents designs it and builds the code.</p>
-      <a href="/app/">Launch Vectron</a>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="mark" viewBox="0 0 32 32">
+        <path d="M4.5 7 L16 26.5 L27.5 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M11.5 7 L16 14.8 L20.5 7 Z" fill="#f68020" />
+      </symbol>
+      <symbol id="arrow-ne" viewBox="0 0 12 12">
+        <path d="M2.5 9.5 L9.5 2.5 M4 2.5 H9.5 V8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="arrow-e" viewBox="0 0 14 14">
+        <path d="M1.5 7 H12 M7.5 2.5 L12 7 L7.5 11.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+    </svg>
+
+    <a class="announce" href="/app/">
+      <span>New: run the crew on your Claude subscription. No API key needed.</span>
+      <svg aria-hidden="true"><use href="#arrow-e" /></svg>
+    </a>
+
+    <header class="nav">
+      <nav class="nav-inner" aria-label="Main">
+        <a class="logo" href="#top" aria-label="Vectron home">
+          <svg aria-hidden="true"><use href="#mark" /></svg>
+          <span class="logo-word"><strong>Vectron</strong><small>Factory</small></span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="#approach">Approach</a></li>
+          <li><a href="#assembly">Assembly Line</a></li>
+          <li><a href="#deliverables">Deliverables</a></li>
+          <li><a href="#crew">Crew</a></li>
+        </ul>
+        <a class="btn btn-blue nav-cta" href="/app/">Launch Vectron</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <svg class="hero-art" viewBox="0 0 600 600" fill="none" aria-hidden="true">
+          <g stroke="#63aeff" stroke-width="1.2">
+            <g stroke-dasharray="4 6" opacity="0.55">
+              <circle cx="160" cy="160" r="104" />
+              <circle cx="440" cy="160" r="104" />
+              <circle cx="160" cy="440" r="104" />
+              <circle cx="440" cy="440" r="104" />
+            </g>
+            <g opacity="0.9">
+              <circle cx="160" cy="160" r="16" />
+              <circle cx="440" cy="160" r="16" />
+              <circle cx="160" cy="440" r="16" />
+              <circle cx="440" cy="440" r="16" />
+              <path d="M172 172 L250 250 M428 172 L350 250 M172 428 L250 350 M428 428 L350 350" stroke-width="7" stroke="#c3c3c3" stroke-linecap="round" opacity="0.35" />
+              <rect x="250" y="236" width="100" height="128" rx="10" />
+              <rect x="276" y="262" width="48" height="30" rx="3" />
+              <rect x="276" y="306" width="48" height="30" rx="3" />
+            </g>
+            <g opacity="0.45">
+              <path d="M40 30 V570 M30 160 H50 M30 440 H50" />
+              <path d="M30 580 H570 M160 570 V590 M440 570 V590" />
+              <path d="M300 200 V120 M292 132 L300 118 L308 132" />
+            </g>
+          </g>
+          <path d="M108 92 A 84 84 0 0 1 222 112" stroke="#f68020" stroke-width="2.2" stroke-linecap="round" />
+          <path d="M378 488 A 84 84 0 0 1 492 508" stroke="#f68020" stroke-width="2.2" stroke-linecap="round" transform="rotate(180 440 440)" />
+          <g fill="#63aeff" font-family="Chivo Mono, monospace" font-size="11" letter-spacing="1.5" opacity="0.75">
+            <text x="268" y="112">FWD</text>
+            <text x="58" y="304" transform="rotate(-90 58 304)">280.0</text>
+            <text x="282" y="598">280.0</text>
+          </g>
+        </svg>
+
+        <div class="hero-tags">
+          <p class="micro"><b>VX-RQ1</b> · Recon Drone</p>
+          <p class="micro">Quad-X · 4 rotors</p>
+          <p class="micro"><b>13</b> modules · <b>52</b> tests</p>
+        </div>
+
+        <div class="wrap">
+          <p class="hero-kicker">For teams that build systems, not snippets.</p>
+          <h1 id="hero-title" class="h-display">Describe a System. Ship the Code.</h1>
+          <div class="hero-actions">
+            <a class="btn btn-orange" href="/app/">Launch Vectron</a>
+            <a class="btn btn-outline" href="#approach">How it works</a>
+          </div>
+        </div>
+
+        <a class="scroll-cue" href="#approach" aria-label="Scroll to the next section">
+          <span class="pill"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5 V10 M2.5 6.5 L6 10 L9.5 6.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+          <span class="micro">Scroll</span>
+        </a>
+      </section>
+
+      <div class="wrap">
+        <div class="stats reveal">
+          <div class="stat"><strong>3</strong><span class="micro">Blueprints in the catalog</span></div>
+          <div class="stat"><strong>13</strong><span class="micro">Independent modules per drone build</span></div>
+          <div class="stat"><strong>52</strong><span class="micro">Generated tests, passing out of the box</span></div>
+          <div class="stat"><strong>0</strong><span class="micro">Network calls in offline mode</span></div>
+        </div>
+        <hr class="rule" />
+      </div>
+
+      <section class="section" id="approach">
+        <div class="wrap">
+          <p class="eyebrow reveal">Approach</p>
+          <h2 class="h-split reveal">
+            Vectron does more than generate code –
+            <span class="accent">it runs a crew that architects, draws, builds and inspects whole systems.</span>
+          </h2>
+          <hr class="rule" style="margin: clamp(56px, 7vw, 80px) 0" />
+
+          <div class="card reveal">
+            <div>
+              <p class="eyebrow">Modular by design</p>
+              <h2 class="h-section">Modules,<br />not monoliths</h2>
+            </div>
+            <div class="card-copy">
+              <p class="lead">
+                Every module talks only through typed messages on a bus.
+                <span class="accent">Test it alone, replace it alone.</span>
+              </p>
+              <hr />
+              <p class="lead">
+                Download the whole project, or <span class="accent">one module at a time</span>, each with
+                its own tests, docs and provenance.
+              </p>
+              <div class="card-actions">
+                <a class="btn btn-orange" href="/app/">Launch Vectron</a>
+                <a class="btn btn-outline" href="#crew">Meet the crew</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="split" id="assembly" aria-labelledby="assembly-title">
+        <div class="split-media">
+          <img src="./landing/assembly-line.png" alt="Vectron mid-build: the assembly line lists each agent's task next to a dimensioned airframe drawing." loading="lazy" />
+        </div>
+        <div class="split-copy reveal">
+          <p class="eyebrow">The assembly line</p>
+          <h2 id="assembly-title" class="h-statement">
+            Watch the crew work in real time: every task, every file and every decision, from the brief to a
+            tested bundle.
+          </h2>
+          <a class="ring-link" href="/app/#/builds">
+            See the builds
+            <span class="ring"><svg aria-hidden="true"><use href="#arrow-ne" /></svg></span>
+          </a>
+        </div>
+      </section>
+
+      <section class="section" id="deliverables">
+        <div class="wrap">
+          <div class="intro reveal">
+            <p class="eyebrow" style="margin-bottom: 0">Deliverables</p>
+            <h2 class="h-section">What Every Build Delivers</h2>
+            <p class="body-dim">
+              Diagrams, code and documents, generated together and traced to the same specification. Clean
+              hand-offs, fewer surprises, faster reviews.
+            </p>
+            <a class="ring-link" href="/app/">
+              Start a build
+              <span class="ring"><svg aria-hidden="true"><use href="#arrow-ne" /></svg></span>
+            </a>
+          </div>
+
+          <div class="items">
+            <article class="item reveal">
+              <div>
+                <h3>System Diagrams</h3>
+                <p>Architecture, data flow, state machines and a dimensioned airframe drawing.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="18" y="6" width="12" height="9" rx="1.5" /><rect x="5" y="33" width="12" height="9" rx="1.5" /><rect x="31" y="33" width="12" height="9" rx="1.5" />
+                  <path d="M24 15 V24 M11 33 V24 H37 V33" />
+                </svg>
+              </div>
+            </article>
+            <article class="item reveal">
+              <div>
+                <h3>Modular Code</h3>
+                <p>A Python package of independent modules wired through a typed message bus.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M24 5 L40 14 V34 L24 43 L8 34 V14 Z" /><path d="M8 14 L24 23 L40 14 M24 23 V43" />
+                </svg>
+              </div>
+            </article>
+            <article class="item reveal">
+              <div>
+                <h3>Generated Tests</h3>
+                <p>Unit tests for every module that pass out of the box.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="24" cy="24" r="17" /><path d="M16 24.5 L21.5 30 L32.5 18.5" />
+                </svg>
+              </div>
+            </article>
+            <article class="item reveal">
+              <div>
+                <h3>Interface Control Document</h3>
+                <p>Every topic and message, documented from the same spec the code is built on.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 5 H30 L38 13 V43 H12 Z" /><path d="M30 5 V13 H38 M18 22 H32 M18 28 H32 M18 34 H27" />
+                </svg>
+              </div>
+            </article>
+            <article class="item reveal">
+              <div>
+                <h3>Inspection Report</h3>
+                <p>A quality gate checks every module before anything is packaged.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="21" cy="21" r="13" /><path d="M30.5 30.5 L42 42 M15 21.5 L19.5 26 L27.5 17" />
+                </svg>
+              </div>
+            </article>
+            <article class="item reveal">
+              <div>
+                <h3>Build Manifest</h3>
+                <p>Provenance and a SHA-256 hash for every file in the bundle.</p>
+                <a class="underline-link" href="/app/">Learn more</a>
+              </div>
+              <div class="item-art">
+                <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M24 5 L40 11 V23 C40 33 33 40 24 43 C15 40 8 33 8 23 V11 Z" /><path d="M18 20 H30 M18 26 H30 M21 15 L19 31 M29 15 L27 31" />
+                </svg>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <div class="wrap"><hr class="rule" /></div>
+
+      <section class="section" id="crew">
+        <div class="wrap">
+          <p class="eyebrow reveal">The crew</p>
+          <h2 class="h-section reveal">Six Roles, One Assembly Line</h2>
+
+          <div class="crew">
+            <article class="crew-card reveal">
+              <p class="micro">Step 01</p>
+              <p class="crew-role">Commander</p>
+              <h3>Reads the brief and plans the build.</h3>
+              <p>Picks the closest blueprint, or designs a new system when none fits.</p>
+            </article>
+            <article class="crew-card reveal">
+              <p class="micro">Step 02</p>
+              <p class="crew-role">Architect</p>
+              <h3>Derives the system specification.</h3>
+              <p>Subsystems, modules and topics, then dispatches the rest of the crew.</p>
+            </article>
+            <article class="crew-card reveal">
+              <p class="micro">Step 03</p>
+              <p class="crew-role">Draftsman &amp; Integrator</p>
+              <h3>Draws the diagrams and wires the core.</h3>
+              <p>Blueprint-style drawings, the runtime, the composition root and the ICD.</p>
+            </article>
+            <article class="crew-card reveal">
+              <p class="micro">Step 04</p>
+              <p class="crew-role">Engineers × N</p>
+              <h3>Fabricate every module in parallel.</h3>
+              <p>Each module is built from the parts library and ships with its own tests.</p>
+            </article>
+            <article class="crew-card reveal">
+              <p class="micro">Step 05</p>
+              <p class="crew-role">Inspector</p>
+              <h3>Holds the quality gate.</h3>
+              <p>Runs the checks and writes the inspection report before anything ships.</p>
+            </article>
+            <article class="crew-card reveal">
+              <p class="micro">Step 06</p>
+              <p class="crew-role">Quartermaster</p>
+              <h3>Packages the bundle.</h3>
+              <p>Docs, manifest and hashes, ready to download whole or by module.</p>
+            </article>
+          </div>
+
+          <a class="btn btn-orange btn-square crew-foot" href="/app/">Start a build</a>
+        </div>
+      </section>
+
+      <section class="cta" aria-labelledby="cta-title">
+        <div class="wrap reveal">
+          <h2 id="cta-title">Describe Your System.<br />Ship the Code.</h2>
+          <a class="btn btn-blue" href="/app/">
+            Launch Vectron
+            <svg aria-hidden="true"><use href="#arrow-ne" /></svg>
+          </a>
+        </div>
+      </section>
     </main>
+
+    <footer class="footer">
+      <div class="wrap">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <svg aria-hidden="true"><use href="#mark" /></svg>
+            <p>The software factory: agents architect systems, draw them and build clean, modular, tested code.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+              <li><a href="/app/">Catalog</a></li>
+              <li><a href="/app/#/builds">Builds</a></li>
+              <li><a href="#crew">The Crew</a></li>
+              <li><a href="#deliverables">Deliverables</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Blueprints</h4>
+            <ul>
+              <li><a href="/app/">Recon Drone</a></li>
+              <li><a href="/app/">Perimeter Radar Node</a></li>
+              <li><a href="/app/">Ground Control Station</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Engines</h4>
+            <ul>
+              <li><a href="/app/">Offline</a></li>
+              <li><a href="/app/">Claude Subscription</a></li>
+              <li><a href="/app/">Anthropic API</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <ul>
+              <li><a href="https://github.com/holdenjdao/Vectron">Source on GitHub</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-base">
+          <span>© 2026 Vectron. Software factory.</span>
+          <span>Runs on your machine · Offline by default</span>
+        </div>
+      </div>
+    </footer>
+
+    <button class="to-top" type="button" aria-label="Back to top">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10 L8 6 L12 10" /></svg>
+    </button>
   </body>
 </html>
