@@ -1,0 +1,454 @@
+id: recon-drone
+name: Recon Drone
+designation: VX-RQ1
+category: air
+summary: >-
+  Small multirotor ISR aircraft: stabilised flight control, GNSS navigation,
+  waypoint missions, geofencing, EO/IR gimbal pointing and CRC-framed telemetry.
+keywords: [drone, uav, uas, suas, quadcopter, hexacopter, octocopter, multirotor, copter,
+  recon, reconnaissance, isr, surveillance, aerial, aircraft, overwatch]
+
+options:
+  - key: layout
+    label: Frame layout
+    type: choice
+    default: quad-x
+    choices:
+      - {value: quad-x, label: Quad X (4 rotors)}
+      - {value: quad-plus, label: Quad + (4 rotors)}
+      - {value: hex-x, label: Hex X (6 rotors)}
+      - {value: octo-x, label: Octo X (8 rotors)}
+    help: Rotor arrangement. Drives both the airframe drawing and the motor mixer code.
+    applies_to: [airframe.layout]
+  - key: arm_length_mm
+    label: Arm length
+    type: number
+    default: 225
+    min: 100
+    max: 600
+    step: 5
+    unit: mm
+    help: Centre-to-motor distance. The Inspector warns if propellers would overlap.
+    applies_to: [airframe.arm_length_mm]
+  - key: prop_diameter_in
+    label: Propeller diameter
+    type: number
+    default: 10
+    min: 5
+    max: 22
+    step: 0.5
+    unit: in
+    applies_to: [airframe.prop_diameter_in]
+  - key: battery_cells
+    label: Battery (LiPo cells in series)
+    type: number
+    default: 4
+    min: 2
+    max: 12
+    step: 1
+    unit: S
+    applies_to: [subsystems.power.modules.battery_monitor.config.cell_count.default]
+  - key: geofence_radius_m
+    label: Geofence radius
+    type: number
+    default: 500
+    min: 50
+    max: 5000
+    step: 50
+    unit: m
+    applies_to: [subsystems.mission.modules.geofence.config.radius_m.default]
+  - key: ceiling_m
+    label: Altitude ceiling
+    type: number
+    default: 120
+    min: 10
+    max: 1000
+    step: 10
+    unit: m
+    applies_to: [subsystems.mission.modules.geofence.config.ceiling_m.default]
+
+spec:
+  package: recon_drone
+  description: >-
+    A man-portable quadcopter for short-range intelligence, surveillance and
+    reconnaissance. Flight-critical loops (estimation, attitude control, mixing)
+    are isolated from mission logic, payload control and the datalink.
+
+  airframe:
+    layout: quad-x
+    arm_length_mm: 225
+    prop_diameter_in: 10
+    body_length_mm: 170
+    body_width_mm: 110
+    mass_kg: 1.6
+    components:
+      - {id: gimbal, label: EO/IR gimbal, x_mm: 78, y_mm: 0, w_mm: 36, h_mm: 36, shape: circle}
+      - {id: fcu, label: Flight control unit, x_mm: 18, y_mm: 0, w_mm: 44, h_mm: 44}
+      - {id: battery, label: Battery pack, x_mm: -36, y_mm: 0, w_mm: 64, h_mm: 36}
+      - {id: datalink, label: Datalink radio, x_mm: -68, y_mm: -30, w_mm: 24, h_mm: 18}
+      - {id: gnss, label: GNSS antenna, x_mm: -68, y_mm: 30, w_mm: 24, h_mm: 24, shape: circle}
+
+  messages:
+    - name: ImuSample
+      doc: Inertial measurement in body axes (x forward, y right, z down).
+      fields:
+        - {name: gyro, type: vec3, unit: rad/s, doc: "Angular rate about x, y, z."}
+        - {name: accel, type: vec3, unit: m/s^2, doc: "Specific force along x, y, z."}
+    - name: NmeaSentence
+      doc: Raw NMEA-0183 sentence from the GNSS receiver.
+      fields:
+        - {name: text, type: str, doc: "Full sentence including the checksum."}
+    - name: GnssFix
+      doc: Decoded GNSS position fix.
+      fields:
+        - {name: lat_deg, type: float, unit: deg, doc: "Latitude, positive north."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Longitude, positive east."}
+        - {name: alt_m, type: float, unit: m, doc: "Altitude above mean sea level."}
+        - {name: satellites, type: int, doc: "Satellites used in the solution."}
+        - {name: hdop, type: float, doc: "Horizontal dilution of precision."}
+        - {name: valid, type: bool, doc: "True when the fix meets the quality thresholds."}
+    - name: NavState
+      doc: Fused navigation solution.
+      fields:
+        - {name: lat_deg, type: float, unit: deg, doc: "Latitude."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Longitude."}
+        - {name: alt_m, type: float, unit: m, doc: "Altitude above mean sea level."}
+        - {name: vel_ned, type: vec3, unit: m/s, doc: "Velocity north, east, down."}
+        - {name: roll, type: float, unit: rad, doc: "Roll angle, right wing down positive."}
+        - {name: pitch, type: float, unit: rad, doc: "Pitch angle, nose up positive."}
+        - {name: yaw, type: float, unit: rad, doc: "Heading, clockwise from north."}
+        - {name: position_valid, type: bool, doc: "True once a valid GNSS fix has been fused."}
+    - name: MissionUpload
+      doc: Waypoint list from the ground station as parallel arrays.
+      fields:
+        - {name: lats_deg, type: "float[]", unit: deg, doc: "Waypoint latitudes."}
+        - {name: lons_deg, type: "float[]", unit: deg, doc: "Waypoint longitudes."}
+        - {name: alts_m, type: "float[]", unit: m, doc: "Waypoint altitudes (MSL)."}
+    - name: GuidanceTarget
+      doc: The active waypoint and its geometry relative to the vehicle.
+      fields:
+        - {name: index, type: int, doc: "Index of the active waypoint."}
+        - {name: lat_deg, type: float, unit: deg, doc: "Waypoint latitude."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Waypoint longitude."}
+        - {name: alt_m, type: float, unit: m, doc: "Waypoint altitude."}
+        - {name: distance_m, type: float, unit: m, doc: "Great-circle distance to the waypoint."}
+        - {name: bearing_deg, type: float, unit: deg, doc: "Initial bearing, 0 = north."}
+        - {name: complete, type: bool, doc: "True once the final waypoint is reached."}
+    - name: AttitudeSetpoint
+      doc: Desired attitude and collective thrust.
+      fields:
+        - {name: roll, type: float, unit: rad, doc: "Desired roll."}
+        - {name: pitch, type: float, unit: rad, doc: "Desired pitch."}
+        - {name: yaw_rate, type: float, unit: rad/s, doc: "Desired yaw rate."}
+        - {name: thrust, type: float, doc: "Collective thrust, 0 to 1."}
+    - name: TorqueCommand
+      doc: Normalised body torques and collective thrust for the mixer.
+      fields:
+        - {name: roll, type: float, doc: "Roll torque, -1 to 1."}
+        - {name: pitch, type: float, doc: "Pitch torque, -1 to 1."}
+        - {name: yaw, type: float, doc: "Yaw torque, -1 to 1."}
+        - {name: thrust, type: float, doc: "Collective thrust, 0 to 1."}
+    - name: MotorOutputs
+      doc: Per-motor commands in motor-number order (M1..Mn).
+      fields:
+        - {name: outputs, type: "float[]", doc: "Normalised motor commands, 0 to 1."}
+        - {name: armed, type: bool, doc: "False while the disarm interlock is active."}
+    - name: GeofenceStatus
+      doc: Containment status against the geofence.
+      fields:
+        - {name: inside, type: bool, default: true, doc: "True while inside the fence."}
+        - {name: breach, type: str, doc: "Empty, RADIUS or CEILING."}
+        - {name: distance_m, type: float, unit: m, doc: "Horizontal distance from home."}
+        - {name: margin_m, type: float, unit: m, doc: "Smallest margin to any fence limit."}
+    - name: BatteryReading
+      doc: Raw power-module sample.
+      fields:
+        - {name: voltage_v, type: float, unit: V, doc: "Pack voltage."}
+        - {name: current_a, type: float, unit: A, doc: "Pack current draw."}
+    - name: BatteryStatus
+      doc: Estimated battery state.
+      fields:
+        - {name: voltage_v, type: float, unit: V, doc: "Pack voltage."}
+        - {name: cell_voltage_v, type: float, unit: V, doc: "Filtered, sag-compensated cell voltage."}
+        - {name: soc_pct, type: float, unit: "%", doc: "State of charge."}
+        - {name: state, type: str, default: OK, doc: "OK, LOW or CRITICAL."}
+    - name: OperatorCommand
+      doc: Command from the operator over the datalink.
+      fields:
+        - {name: command, type: str, doc: "ARM, DISARM, TAKEOFF, START_MISSION, LOITER, RTL or LAND."}
+        - {name: source, type: str, doc: "Originating station."}
+    - name: FlightMode
+      doc: Current flight mode and the transition that produced it.
+      fields:
+        - {name: mode, type: str, doc: "Current mode."}
+        - {name: previous, type: str, doc: "Mode before the transition."}
+        - {name: trigger, type: str, doc: "Command or event that caused the transition."}
+        - {name: accepted, type: bool, default: true, doc: "False when a command was rejected."}
+    - name: TelemetryFrame
+      doc: One CRC-protected downlink frame.
+      fields:
+        - {name: seq, type: int, doc: "Frame sequence number."}
+        - {name: payload, type: bytes, doc: "Encoded frame including sync and CRC."}
+    - name: PointOfInterest
+      doc: Ground point designated by the operator for observation.
+      fields:
+        - {name: lat_deg, type: float, unit: deg, doc: "Latitude."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Longitude."}
+        - {name: alt_m, type: float, unit: m, doc: "Altitude above mean sea level."}
+    - name: GimbalCommand
+      doc: Pan/tilt demand for the EO/IR gimbal.
+      fields:
+        - {name: pan_deg, type: float, unit: deg, doc: "Pan, positive right of the nose."}
+        - {name: tilt_deg, type: float, unit: deg, doc: "Tilt, negative below the horizon."}
+        - {name: tracking, type: bool, doc: "True while pointing at a designated target."}
+    - name: ImageCapture
+      doc: Metadata for one captured EO/IR frame.
+      fields:
+        - {name: frame_id, type: int, doc: "Monotonic frame counter."}
+        - {name: lat_deg, type: float, unit: deg, doc: "Vehicle latitude at capture."}
+        - {name: lon_deg, type: float, unit: deg, doc: "Vehicle longitude at capture."}
+        - {name: alt_m, type: float, unit: m, doc: "Vehicle altitude at capture."}
+        - {name: pan_deg, type: float, unit: deg, doc: "Gimbal pan at capture."}
+        - {name: tilt_deg, type: float, unit: deg, doc: "Gimbal tilt at capture."}
+    - name: HealthReport
+      doc: Aggregated system health.
+      fields:
+        - {name: healthy, type: bool, default: true, doc: "False if any monitored source is stale."}
+        - {name: stale_topics, type: "str[]", doc: "Topics that have gone silent."}
+
+  topics:
+    - {name: sensors.imu, message: ImuSample, external: true, doc: "IMU driver output at 200 Hz."}
+    - {name: sensors.gnss_nmea, message: NmeaSentence, external: true, doc: "GNSS receiver UART sentences."}
+    - {name: sensors.battery, message: BatteryReading, external: true, doc: "Power module samples."}
+    - {name: gcs.command, message: OperatorCommand, external: true, doc: "Operator commands from the GCS."}
+    - {name: gcs.mission, message: MissionUpload, external: true, doc: "Mission upload from the GCS."}
+    - {name: gcs.poi, message: PointOfInterest, external: true, doc: "Operator-designated point of interest."}
+    - {name: nav.gnss_fix, message: GnssFix, doc: "Validated GNSS fixes."}
+    - {name: nav.state, message: NavState, doc: "Fused navigation solution."}
+    - {name: mission.target, message: GuidanceTarget, doc: "Active waypoint geometry."}
+    - {name: mission.geofence, message: GeofenceStatus, doc: "Geofence containment status."}
+    - {name: mission.mode, message: FlightMode, doc: "Flight mode changes and command responses."}
+    - {name: control.attitude_sp, message: AttitudeSetpoint, doc: "Attitude and thrust setpoints."}
+    - {name: control.torque, message: TorqueCommand, doc: "Torque demands for the mixer."}
+    - {name: actuators.motors, message: MotorOutputs, doc: "Motor commands to the ESCs."}
+    - {name: power.status, message: BatteryStatus, doc: "Battery state estimate."}
+    - {name: comms.downlink, message: TelemetryFrame, doc: "Encoded telemetry frames for the radio."}
+    - {name: payload.gimbal, message: GimbalCommand, doc: "Gimbal pointing demands."}
+    - {name: payload.capture, message: ImageCapture, doc: "Geotagged capture metadata."}
+    - {name: health.report, message: HealthReport, doc: "System health summary."}
+
+  subsystems:
+    - id: navigation
+      name: Navigation
+      description: Turns raw sensor data into a trusted navigation solution.
+      modules:
+        - id: gnss_receiver
+          name: GNSS Receiver
+          responsibility: Parse NMEA GGA sentences into validated position fixes.
+          part: nmea-gga-parser
+          subscribes: [sensors.gnss_nmea]
+          publishes: [nav.gnss_fix]
+        - id: state_estimator
+          name: State Estimator
+          responsibility: Fuse IMU and GNSS data into attitude, position and velocity.
+          part: complementary-nav-filter
+          subscribes: [sensors.imu, nav.gnss_fix]
+          publishes: [nav.state]
+
+    - id: flight_control
+      name: Flight Control
+      description: Closes the guidance, attitude and actuator loops.
+      modules:
+        - id: guidance_controller
+          name: Guidance Controller
+          responsibility: >-
+            Convert the active guidance target and flight mode into attitude and
+            thrust setpoints (horizontal position/velocity and altitude loops).
+          subscribes: [mission.target, nav.state, mission.mode]
+          publishes: [control.attitude_sp]
+          rate_hz: 50
+        - id: attitude_controller
+          name: Attitude Controller
+          responsibility: Track attitude setpoints with PID loops and output body torques.
+          part: pid-attitude-controller
+          subscribes: [control.attitude_sp, nav.state]
+          publishes: [control.torque]
+        - id: motor_mixer
+          name: Motor Mixer
+          responsibility: Mix torque and thrust demands into per-motor commands with a disarm interlock.
+          part: multirotor-mixer
+          subscribes: [control.torque, mission.mode]
+          publishes: [actuators.motors]
+
+    - id: mission
+      name: Mission Management
+      description: Mission sequencing, containment and the flight-mode supervisor.
+      modules:
+        - id: waypoint_planner
+          name: Waypoint Planner
+          responsibility: Sequence uploaded waypoints and publish the active guidance target.
+          part: waypoint-sequencer
+          subscribes: [gcs.mission, nav.state]
+          publishes: [mission.target]
+        - id: geofence
+          name: Geofence
+          responsibility: Enforce the radius and ceiling containment around home.
+          part: cylinder-geofence
+          subscribes: [nav.state]
+          publishes: [mission.geofence]
+          config:
+            - {name: radius_m, type: float, default: 500, unit: m, doc: "Maximum horizontal distance from home."}
+            - {name: ceiling_m, type: float, default: 120, unit: m, doc: "Maximum height above home."}
+        - id: flight_mode_manager
+          name: Flight Mode Manager
+          responsibility: Run the flight-mode state machine from operator commands and safety events.
+          part: flight-mode-supervisor
+          state_machine: flight_modes
+          subscribes: [gcs.command, mission.geofence, power.status]
+          publishes: [mission.mode]
+
+    - id: power
+      name: Power & Health
+      description: Energy management and system health monitoring.
+      modules:
+        - id: battery_monitor
+          name: Battery Monitor
+          responsibility: Estimate state of charge and raise LOW / CRITICAL battery states.
+          part: lipo-battery-monitor
+          subscribes: [sensors.battery]
+          publishes: [power.status]
+          config:
+            - {name: cell_count, type: int, default: 4, doc: "Cells in series (S rating)."}
+        - id: health_monitor
+          name: Health Monitor
+          responsibility: >-
+            Watch critical data sources for staleness and publish an aggregated
+            health report the supervisor and operator can act on.
+          subscribes: [sensors.imu, nav.state, power.status]
+          publishes: [health.report]
+          rate_hz: 2
+
+    - id: comms
+      name: Communications
+      description: Datalink to the ground control station.
+      modules:
+        - id: telemetry_link
+          name: Telemetry Link
+          responsibility: Encode vehicle state into rate-limited, CRC-protected downlink frames.
+          part: crc-telemetry-framer
+          subscribes: [nav.state, power.status, mission.mode]
+          publishes: [comms.downlink]
+
+    - id: payload
+      name: ISR Payload
+      description: Stabilised EO/IR sensor pointing and capture.
+      modules:
+        - id: gimbal_controller
+          name: Gimbal Controller
+          responsibility: Point the EO/IR gimbal at the operator's point of interest.
+          part: geo-pointing-gimbal
+          subscribes: [nav.state, gcs.poi]
+          publishes: [payload.gimbal]
+        - id: eo_ir_camera
+          name: EO/IR Camera
+          responsibility: >-
+            Schedule EO/IR frame captures and geotag each frame with the vehicle
+            pose and gimbal angles.
+          subscribes: [payload.gimbal, nav.state]
+          publishes: [payload.capture]
+          rate_hz: 5
+
+  state_machines:
+    - id: flight_modes
+      title: Flight modes
+      initial: DISARMED
+      states:
+        - {name: DISARMED, doc: "Motors locked."}
+        - {name: ARMED, doc: "Motors spinning at idle on the ground."}
+        - {name: TAKEOFF, doc: "Climbing to mission altitude."}
+        - {name: MISSION, doc: "Flying the uploaded waypoints."}
+        - {name: LOITER, doc: "Holding position."}
+        - {name: RTL, doc: "Returning to launch."}
+        - {name: LAND, doc: "Descending to land."}
+      transitions:
+        - {source: DISARMED, trigger: ARM, target: ARMED}
+        - {source: ARMED, trigger: DISARM, target: DISARMED}
+        - {source: ARMED, trigger: TAKEOFF, target: TAKEOFF}
+        - {source: TAKEOFF, trigger: START_MISSION, target: MISSION}
+        - {source: TAKEOFF, trigger: LOITER, target: LOITER}
+        - {source: MISSION, trigger: LOITER, target: LOITER}
+        - {source: LOITER, trigger: START_MISSION, target: MISSION}
+        - {source: MISSION, trigger: RTL, target: RTL}
+        - {source: LOITER, trigger: RTL, target: RTL}
+        - {source: MISSION, trigger: LAND, target: LAND}
+        - {source: LOITER, trigger: LAND, target: LAND}
+        - {source: RTL, trigger: LAND, target: LAND}
+        - {source: LAND, trigger: DISARM, target: DISARMED}
+        - {source: TAKEOFF, trigger: GEOFENCE_BREACH, target: RTL}
+        - {source: MISSION, trigger: GEOFENCE_BREACH, target: RTL}
+        - {source: LOITER, trigger: GEOFENCE_BREACH, target: RTL}
+        - {source: MISSION, trigger: BATTERY_LOW, target: RTL}
+        - {source: LOITER, trigger: BATTERY_LOW, target: RTL}
+        - {source: TAKEOFF, trigger: BATTERY_CRITICAL, target: LAND}
+        - {source: MISSION, trigger: BATTERY_CRITICAL, target: LAND}
+        - {source: LOITER, trigger: BATTERY_CRITICAL, target: LAND}
+        - {source: RTL, trigger: BATTERY_CRITICAL, target: LAND}
+
+  sequences:
+    - id: mission_execution
+      title: Mission execution
+      participants:
+        - {id: operator, label: Operator (GCS), kind: actor}
+        - {id: flight_mode_manager, label: Flight Mode Manager}
+        - {id: waypoint_planner, label: Waypoint Planner}
+        - {id: guidance_controller, label: Guidance Controller}
+        - {id: attitude_controller, label: Attitude Controller}
+        - {id: motor_mixer, label: Motor Mixer}
+        - {id: telemetry_link, label: Telemetry Link}
+      steps:
+        - {source: operator, target: waypoint_planner, message: "MissionUpload (gcs.mission)"}
+        - {source: operator, target: flight_mode_manager, message: "ARM, TAKEOFF, START_MISSION"}
+        - {source: flight_mode_manager, target: motor_mixer, message: "FlightMode MISSION (mission.mode)", note: "Disarm interlock released"}
+        - {source: waypoint_planner, target: guidance_controller, message: "GuidanceTarget (mission.target)"}
+        - {source: guidance_controller, target: attitude_controller, message: "AttitudeSetpoint (control.attitude_sp)"}
+        - {source: attitude_controller, target: motor_mixer, message: "TorqueCommand (control.torque)"}
+        - {source: telemetry_link, target: operator, message: "TelemetryFrame (comms.downlink)", note: "5 Hz CRC-16 frames"}
+    - id: geofence_breach
+      title: Geofence breach response
+      participants:
+        - {id: geofence, label: Geofence}
+        - {id: flight_mode_manager, label: Flight Mode Manager}
+        - {id: guidance_controller, label: Guidance Controller}
+        - {id: telemetry_link, label: Telemetry Link}
+        - {id: operator, label: Operator (GCS), kind: actor}
+      steps:
+        - {source: geofence, target: flight_mode_manager, message: "GeofenceStatus breach=RADIUS"}
+        - {source: flight_mode_manager, target: flight_mode_manager, message: "GEOFENCE_BREACH: MISSION to RTL", kind: sync}
+        - {source: flight_mode_manager, target: guidance_controller, message: "FlightMode RTL"}
+        - {source: flight_mode_manager, target: telemetry_link, message: "FlightMode RTL"}
+        - {source: telemetry_link, target: operator, message: "TelemetryFrame mode=RTL"}
+
+  simulation:
+    - topic: sensors.imu
+      fields: {gyro: [0.0, 0.0, 0.0], accel: [0.0, 0.0, -9.81]}
+    - topic: sensors.gnss_nmea
+      rate_hz: 5
+      fields: {text: "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"}
+    - topic: sensors.battery
+      rate_hz: 10
+      fields: {voltage_v: 16.2, current_a: 11.5}
+    - topic: gcs.mission
+      at_s: 0.1
+      fields: {lats_deg: [48.1180, 48.1190, 48.1190], lons_deg: [11.5167, 11.5167, 11.5185], alts_m: [600, 600, 600]}
+    - topic: gcs.poi
+      at_s: 0.2
+      fields: {lat_deg: 48.1185, lon_deg: 11.5175, alt_m: 540}
+    - topic: gcs.command
+      at_s: 0.5
+      fields: {command: ARM, source: sim}
+    - topic: gcs.command
+      at_s: 1.0
+      fields: {command: TAKEOFF, source: sim}
+    - topic: gcs.command
+      at_s: 2.0
+      fields: {command: START_MISSION, source: sim}

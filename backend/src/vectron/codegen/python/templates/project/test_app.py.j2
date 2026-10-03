@@ -1,0 +1,30 @@
+"""{{ ("Integration test: build the whole " ~ spec.name ~ " and run the smoke simulation.") | docwrap(3, 0) }}"""
+
+from {{ package }}.app import MODULE_TYPES, build, run
+from {{ package }}.core.topics import EXTERNAL_TOPICS, TOPICS
+
+
+def test_every_module_starts() -> None:
+    _, modules = build()
+    assert len(modules) == len(MODULE_TYPES) == {{ spec.module_count }}
+    assert all(module.started for module in modules)
+
+
+def test_modules_only_use_registered_topics() -> None:
+    for module_type in MODULE_TYPES:
+        for topic, message_type in {**module_type.subscribes, **module_type.publishes}.items():
+            assert TOPICS[topic] is message_type, f"{module_type.__name__}: {topic}"
+
+
+def test_modules_never_publish_external_topics() -> None:
+    for module_type in MODULE_TYPES:
+        assert not set(module_type.publishes) & EXTERNAL_TOPICS, module_type.__name__
+
+
+def test_smoke_simulation_runs() -> None:
+    bus, _ = run(duration_s=3.0)
+{% if spec.simulation %}
+    assert bus.published > 0
+{% else %}
+    assert bus.published >= 0  # the spec defines no sample inputs yet
+{% endif %}

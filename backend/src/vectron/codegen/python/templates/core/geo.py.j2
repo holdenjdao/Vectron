@@ -1,0 +1,52 @@
+"""{{ ("Small geodesy and angle helpers shared by " ~ spec.name ~ " modules.") | docwrap(3, 0) }}
+
+Flat-earth approximations are used where noted; they are accurate to well under
+a metre over the few-kilometre ranges a small platform operates in.
+"""
+
+from __future__ import annotations
+
+import math
+
+EARTH_RADIUS_M = 6_371_000.0
+
+
+def clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def wrap_pi(angle: float) -> float:
+    """Wrap an angle in radians to [-pi, pi)."""
+    return (angle + math.pi) % (2.0 * math.pi) - math.pi
+
+
+def wrap_180(degrees: float) -> float:
+    """Wrap an angle in degrees to [-180, 180)."""
+    return (degrees + 180.0) % 360.0 - 180.0
+
+
+def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in metres between two points given in degrees."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = phi2 - phi1
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return 2.0 * EARTH_RADIUS_M * math.asin(math.sqrt(min(1.0, a)))
+
+
+def bearing_deg(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Initial great-circle bearing in degrees [0, 360), 0 = north, 90 = east."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_lambda = math.radians(lon2 - lon1)
+    y = math.sin(d_lambda) * math.cos(phi2)
+    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(d_lambda)
+    return math.degrees(math.atan2(y, x)) % 360.0
+
+
+def local_ned_offset(
+    lat0: float, lon0: float, alt0: float, lat1: float, lon1: float, alt1: float
+) -> tuple[float, float, float]:
+    """North/east/down offset in metres of point 1 from point 0 (flat-earth)."""
+    north = math.radians(lat1 - lat0) * EARTH_RADIUS_M
+    east = math.radians(lon1 - lon0) * EARTH_RADIUS_M * math.cos(math.radians(lat0))
+    return north, east, alt0 - alt1

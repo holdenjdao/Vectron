@@ -1,0 +1,57 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:lipo-battery-monitor" ~ ").") | docwrap(3, 0) }}"""
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import BatteryReading, BatteryStatus
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import (
+    {{ class_name }},
+    {{ config_class }},
+    soc_from_cell_voltage,
+)
+
+
+def make(cells: int = 4) -> tuple[MessageBus, list[BatteryStatus]]:
+    bus = MessageBus()
+    config = {{ config_class }}(cell_count=cells, pack_resistance_ohm=0.0, smoothing=1.0)
+    {{ class_name }}(bus, config).start()
+    statuses: list[BatteryStatus] = []
+    bus.subscribe({{ pub("BatteryStatus") | py }}, statuses.append)
+    return bus, statuses
+
+
+def reading(volts: float) -> BatteryReading:
+    return BatteryReading(voltage_v=volts, current_a=0.0)
+
+
+def test_soc_curve_endpoints_and_midpoint() -> None:
+    assert soc_from_cell_voltage(4.25) == 100.0
+    assert soc_from_cell_voltage(3.00) == 0.0
+    assert soc_from_cell_voltage(3.84) == pytest.approx(50.0)
+    assert soc_from_cell_voltage(3.855) == pytest.approx(55.0)
+
+
+def test_full_pack_is_ok() -> None:
+    bus, statuses = make(cells=4)
+    bus.publish({{ sub("BatteryReading") | py }}, reading(16.8))
+    assert statuses[-1].soc_pct == pytest.approx(100.0)
+    assert statuses[-1].cell_voltage_v == pytest.approx(4.2)
+    assert statuses[-1].state == "OK"
+
+
+def test_low_and_critical_thresholds() -> None:
+    bus, statuses = make(cells=4)
+    bus.publish({{ sub("BatteryReading") | py }}, reading(4 * 3.75))
+    assert statuses[-1].state == "LOW"
+    bus.publish({{ sub("BatteryReading") | py }}, reading(4 * 3.62))
+    assert statuses[-1].state == "CRITICAL"
+
+
+def test_sag_compensation_uses_current() -> None:
+    bus = MessageBus()
+    config = {{ config_class }}(cell_count=4, pack_resistance_ohm=0.05, smoothing=1.0)
+    {{ class_name }}(bus, config).start()
+    statuses: list[BatteryStatus] = []
+    bus.subscribe({{ pub("BatteryStatus") | py }}, statuses.append)
+    bus.publish({{ sub("BatteryReading") | py }}, BatteryReading(voltage_v=15.0, current_a=20.0))
+    assert statuses[-1].cell_voltage_v == pytest.approx(4.0)

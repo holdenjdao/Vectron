@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Vectron runtime data (job workspaces, bundles)
+.vectron/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

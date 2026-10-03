@@ -1,0 +1,63 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+# Transition table rendered from the "{{ machine.title }}" state machine in the system
+# spec, the same source as diagrams/{{ machine.id | replace("_", "-") }}.mmd.
+INITIAL_MODE = {{ machine.initial | py }}
+TRANSITIONS: dict[tuple[str, str], str] = {
+{% for transition in machine.transitions %}
+    ({{ transition.source | py }}, {{ transition.trigger | py }}): {{ transition.target | py }},
+{% endfor %}
+}
+# Raised by onboard safety monitors only; operators cannot inject them as commands.
+SAFETY_TRIGGERS = frozenset({{ "{" }}{{ safety_triggers | map("py") | join(", ") }}{{ "}" }})
+{% endblock %}
+{% block init %}
+        self.mode = INITIAL_MODE
+        self._breached = False
+        self._battery_state = "OK"
+{% endblock %}
+{% block body %}
+
+    def start(self) -> None:
+        super().start()
+        self._announce(0.0, self.mode, "INIT", accepted=True)
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("OperatorCommand") | py }}: self.on_command,
+            {{ sub("GeofenceStatus") | py }}: self.on_geofence,
+            {{ sub("BatteryStatus") | py }}: self.on_battery,
+        }
+
+    def on_command(self, command: OperatorCommand) -> None:
+        trigger = command.command.strip().upper()
+        if trigger in SAFETY_TRIGGERS or not self.fire(trigger, command.t):
+            self._announce(command.t, self.mode, trigger, accepted=False)
+
+    def on_geofence(self, status: GeofenceStatus) -> None:
+        breached = not status.inside
+        if breached and not self._breached:  # edge-triggered
+            self.fire("GEOFENCE_BREACH", status.t)
+        self._breached = breached
+
+    def on_battery(self, status: BatteryStatus) -> None:
+        if status.state != self._battery_state and status.state in ("LOW", "CRITICAL"):
+            self.fire(f"BATTERY_{status.state}", status.t)
+        self._battery_state = status.state
+
+    def fire(self, trigger: str, t: float) -> bool:
+        """Apply ``trigger``; returns False when it is not valid in the current mode."""
+        target = TRANSITIONS.get((self.mode, trigger))
+        if target is None:
+            return False
+        previous, self.mode = self.mode, target
+        self._announce(t, previous, trigger, accepted=True)
+        return True
+
+    def _announce(self, t: float, previous: str, trigger: str, accepted: bool) -> None:
+        mode = FlightMode(
+            t=t, mode=self.mode, previous=previous, trigger=trigger, accepted=accepted
+        )
+        self.publish({{ pub("FlightMode") | py }}, mode)
+{% endblock %}

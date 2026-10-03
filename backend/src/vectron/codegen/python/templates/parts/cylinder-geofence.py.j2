@@ -1,0 +1,36 @@
+{% extends "module/base.py.j2" %}
+{% block init %}
+        self.home: tuple[float, float, float] | None = None
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {{ "{" }}{{ sub("NavState") | py }}: self.on_state{{ "}" }}
+
+    def on_state(self, state: NavState) -> None:
+        """Check the vehicle against a cylinder around home (radius + height ceiling)."""
+        if not state.position_valid:
+            return
+        if self.home is None:
+            # Configured home wins; otherwise the first valid position becomes home.
+            lat = self.config.home_lat_deg or state.lat_deg
+            lon = self.config.home_lon_deg or state.lon_deg
+            self.home = (lat, lon, state.alt_m)
+        home_lat, home_lon, home_alt = self.home
+        distance = haversine_m(home_lat, home_lon, state.lat_deg, state.lon_deg)
+        radius_margin = self.config.radius_m - distance
+        ceiling_margin = self.config.ceiling_m - (state.alt_m - home_alt)
+        breach = ""
+        if radius_margin < 0.0:
+            breach = "RADIUS"
+        elif ceiling_margin < 0.0:
+            breach = "CEILING"
+        status = GeofenceStatus(
+            t=state.t,
+            inside=not breach,
+            breach=breach,
+            distance_m=distance,
+            margin_m=min(radius_margin, ceiling_margin),
+        )
+        self.publish({{ pub("GeofenceStatus") | py }}, status)
+{% endblock %}

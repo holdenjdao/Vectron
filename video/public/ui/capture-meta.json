@@ -1,0 +1,40 @@
+{
+ "briefPanel": {
+  "x": 24,
+  "y": 224.5,
+  "width": 1028,
+  "height": 169.53125
+ },
+ "textarea": {
+  "x": 39,
+  "y": 277.5,
+  "width": 752,
+  "height": 72.78125
+ },
+ "buildBtn": {
+  "x": 807,
+  "y": 345.03125,
+  "width": 230,
+  "height": 34
+ },
+ "briefFrames": 33,
+ "buildTimes": [
+  362,
+  890,
+  1492
+ ],
+ "assembly": {
+  "x": 24,
+  "y": 272.25,
+  "width": 550.390625,
+  "height": 598
+ },
+ "diagramCount": 7,
+ "diagram1": "System architecture",
+ "diagram2": "Interface data flow",
+ "diagram3": "Flight modes (state machine)",
+ "diagram4": "Mission execution (sequence)",
+ "diagram5": "Geofence breach response (sequence)",
+ "diagram6": "Product breakdown structure",
+ "url": "http://127.0.0.1:8000/app/#/jobs/job_b2fb27c2bf"
+}

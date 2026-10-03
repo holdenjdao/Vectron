@@ -1,0 +1,53 @@
+"""{{ (spec.name ~ " (" ~ spec.designation ~ ") composition root.") | docwrap(3, 0) }}
+
+This is the only file that knows about every module. It puts them all on one
+MessageBus and runs a fixed-step scheduler that honours each module's
+``rate_hz``. Swap an implementation by changing a single line in MODULE_TYPES.
+"""
+
+from __future__ import annotations
+
+from .core.bus import MessageBus
+from .core.module import Module
+from .core.topics import TOPICS
+from .sim import SampleFeed
+{% for subsystem, module in modules %}
+from .{{ subsystem.id }}.{{ module.id }} import {{ module.class_name }}
+{% endfor %}
+
+MODULE_TYPES: tuple[type[Module], ...] = (
+{% for subsystem, module in modules %}
+    {{ module.class_name }},
+{% endfor %}
+)
+
+
+def build(bus: MessageBus | None = None) -> tuple[MessageBus, list[Module]]:
+    """Instantiate and start every module with its default configuration."""
+    bus = bus or MessageBus()
+    modules = [module_type(bus) for module_type in MODULE_TYPES]
+    for module in modules:
+        module.start()
+    return bus, modules
+
+
+def run(duration_s: float = 5.0, rate_hz: float = 50.0) -> tuple[MessageBus, list[Module]]:
+    """Feed the sample inputs from ``sim.py`` through the system for ``duration_s``."""
+    bus, modules = build()
+    feed = SampleFeed(bus)
+    for step in range(round(duration_s * rate_hz)):
+        t = step / rate_hz
+        feed.step(t)
+        for module in modules:
+            if module.rate_hz is None or step % max(1, round(rate_hz / module.rate_hz)) == 0:
+                module.tick(t)
+    return bus, modules
+
+
+def main() -> None:
+    bus, modules = run()
+    print(f"{{ spec.designation }} {{ spec.name }}: {len(modules)} modules, {bus.published} messages")
+    for topic in sorted(TOPICS):
+        message = bus.latest(topic)
+        if message is not None:
+            print(f"  {topic:<24} {message}")

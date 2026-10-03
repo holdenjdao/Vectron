@@ -1,0 +1,15 @@
+"""{{ ("Topic registry: every channel on the " ~ spec.name ~ " bus and the message it carries.") | docwrap(3, 0) }}"""
+
+from __future__ import annotations
+
+from .messages import {{ topic_messages | join(", ") }}
+
+TOPICS: dict[str, type] = {
+{% for topic in spec.topics %}
+    {{ topic.name | py }}: {{ topic.message }},
+{% endfor %}
+}
+"""Topic name -> message type."""
+
+EXTERNAL_TOPICS: frozenset[str] = frozenset({% if external_topics %}{{ "{" }}{{ external_topics | map("py") | join(", ") }}{{ "}" }}{% endif %})
+"""Topics produced outside the system boundary (sensor drivers, operators)."""

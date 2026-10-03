@@ -1,0 +1,27 @@
+"""{{ ("Message definitions: the interface contract between " ~ spec.name ~ " modules.") | docwrap(3, 0) }}
+
+Every message is an immutable dataclass. Fields, units and the topics carrying
+each message are documented in ICD.md. Change a message only together with the
+modules that publish or consume it.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+{% for message in spec.messages %}
+
+
+@dataclass(frozen=True, slots=True)
+class {{ message.name }}:
+    """{{ (message.doc or message.name) | docwrap(7, 4) }}
+
+    Attributes:
+{% for field in message.fields %}
+        {{ field_doc(field) | docwrap(8, 12) }}
+{% endfor %}
+    """
+
+{% for field in message.fields %}
+    {{ field.name }}: {{ field.type | pytype }} = {{ field_default(field) }}
+{% endfor %}
+{% endfor %}

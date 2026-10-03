@@ -1,0 +1,64 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:complementary-nav-filter" ~ ").") | docwrap(3, 0) }}"""
+
+import math
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import GnssFix, ImuSample, NavState
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}
+
+GRAVITY = 9.81
+
+
+def make() -> tuple[MessageBus, {{ class_name }}, list[NavState]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    states: list[NavState] = []
+    bus.subscribe({{ pub("NavState") | py }}, states.append)
+    return bus, module, states
+
+
+def test_level_and_still_reads_zero_attitude() -> None:
+    bus, _, states = make()
+    for step in range(10):
+        bus.publish(
+            {{ sub("ImuSample") | py }},
+            ImuSample(t=step * 0.01, accel=(0.0, 0.0, -GRAVITY)),
+        )
+    assert states[-1].roll == pytest.approx(0.0)
+    assert states[-1].pitch == pytest.approx(0.0)
+    assert not states[-1].position_valid
+
+
+def test_converges_to_tilt_seen_by_accelerometer() -> None:
+    bus, _, states = make()
+    bus.publish({{ sub("ImuSample") | py }}, ImuSample(t=0.0, accel=(0.0, 0.0, -GRAVITY)))
+    roll = math.radians(10.0)
+    tilted = (0.0, -GRAVITY * math.sin(roll), -GRAVITY * math.cos(roll))
+    for step in range(1, 400):
+        bus.publish({{ sub("ImuSample") | py }}, ImuSample(t=step * 0.005, accel=tilted))
+    assert states[-1].roll == pytest.approx(roll, abs=math.radians(0.5))
+
+
+def test_integrates_yaw_rate() -> None:
+    bus, _, states = make()
+    for step in range(101):
+        sample = ImuSample(t=step * 0.01, gyro=(0.0, 0.0, 0.5), accel=(0.0, 0.0, -GRAVITY))
+        bus.publish({{ sub("ImuSample") | py }}, sample)
+    assert states[-1].yaw == pytest.approx(0.5, abs=1e-6)
+
+
+def test_valid_fix_sets_position_and_velocity() -> None:
+    bus, _, states = make()
+    first = GnssFix(t=0.0, lat_deg=48.0, lon_deg=11.0, alt_m=500.0, valid=True)
+    second = GnssFix(t=1.0, lat_deg=48.0001, lon_deg=11.0, alt_m=501.0, valid=True)
+    bus.publish({{ sub("GnssFix") | py }}, first)
+    bus.publish({{ sub("GnssFix") | py }}, second)
+    bus.publish({{ sub("ImuSample") | py }}, ImuSample(t=1.0, accel=(0.0, 0.0, -GRAVITY)))
+    state = states[-1]
+    assert state.position_valid
+    assert state.lat_deg == pytest.approx(48.0001)
+    assert state.vel_ned[0] == pytest.approx(11.12, abs=0.05)
+    assert state.vel_ned[2] == pytest.approx(-1.0)

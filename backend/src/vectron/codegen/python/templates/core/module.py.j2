@@ -1,0 +1,65 @@
+"""{{ ("Base class for " ~ spec.name ~ " modules.") | docwrap(3, 0) }}
+
+A module is one independent unit of behaviour. It declares the topics it
+consumes and produces, and the base class enforces that contract at runtime:
+publishing to an undeclared topic, or the wrong message type, raises. That is
+what keeps modules swappable and individually testable.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from typing import Any, ClassVar
+
+from .bus import MessageBus
+
+
+class Module:
+    """Lifecycle: ``start()`` subscribes, ``tick(t)`` runs periodic work, ``stop()`` detaches."""
+
+    #: Unique module identifier (snake_case).
+    name: ClassVar[str] = "module"
+    #: Topics consumed, mapped to their message type.
+    subscribes: ClassVar[Mapping[str, type]] = {}
+    #: Topics produced, mapped to their message type.
+    publishes: ClassVar[Mapping[str, type]] = {}
+    #: Preferred scheduling rate in Hz (``None`` = every scheduler step).
+    rate_hz: ClassVar[float | None] = None
+
+    def __init__(self, bus: MessageBus, config: Any = None) -> None:
+        self.bus = bus
+        self.config = config
+        self.started = False
+        self._handlers: dict[str, Callable[[Any], None]] = {}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        """Map each subscribed topic to the method that handles it."""
+        return {}
+
+    def start(self) -> None:
+        self._handlers = dict(self.handlers())
+        for topic, handler in self._handlers.items():
+            if topic not in self.subscribes:
+                raise ValueError(f"{self.name}: handler for undeclared topic {topic!r}")
+            self.bus.subscribe(topic, handler)
+        self.started = True
+
+    def tick(self, t: float) -> None:
+        """Periodic work, called by the scheduler with the current time in seconds."""
+
+    def stop(self) -> None:
+        for topic, handler in self._handlers.items():
+            self.bus.unsubscribe(topic, handler)
+        self._handlers = {}
+        self.started = False
+
+    def publish(self, topic: str, message: Any) -> None:
+        expected = self.publishes.get(topic)
+        if expected is None:
+            raise ValueError(f"{self.name}: publishing to undeclared topic {topic!r}")
+        if not isinstance(message, expected):
+            raise TypeError(
+                f"{self.name}: {topic!r} carries {expected.__name__}, "
+                f"got {type(message).__name__}"
+            )
+        self.bus.publish(topic, message)

@@ -1,0 +1,74 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+
+class Pid:
+    """Minimal PID controller with integrator clamping."""
+
+    def __init__(self, kp: float, ki: float, kd: float, integral_limit: float) -> None:
+        self.kp, self.ki, self.kd = kp, ki, kd
+        self.integral_limit = integral_limit
+        self.integral = 0.0
+        self._previous_error: float | None = None
+
+    def update(self, error: float, dt: float) -> float:
+        derivative = 0.0
+        if dt > 0.0:
+            limit = self.integral_limit
+            self.integral = clamp(self.integral + error * dt, -limit, limit)
+            if self._previous_error is not None:
+                derivative = (error - self._previous_error) / dt
+        self._previous_error = error
+        return self.kp * error + self.ki * self.integral + self.kd * derivative
+
+    def reset(self) -> None:
+        self.integral = 0.0
+        self._previous_error = None
+{% endblock %}
+{% block init %}
+        gains = (self.config.kp_angle, self.config.ki_angle, self.config.kd_angle)
+        self.roll_pid = Pid(*gains, self.config.integral_limit)
+        self.pitch_pid = Pid(*gains, self.config.integral_limit)
+        self._setpoint: AttitudeSetpoint | None = None
+        self._state: NavState | None = None
+        self._last_t: float | None = None
+        self._last_yaw: float | None = None
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("AttitudeSetpoint") | py }}: self.on_setpoint,
+            {{ sub("NavState") | py }}: self.on_state,
+        }
+
+    def on_setpoint(self, setpoint: AttitudeSetpoint) -> None:
+        self._setpoint = setpoint
+
+    def on_state(self, state: NavState) -> None:
+        self._state = state
+
+    def tick(self, t: float) -> None:
+        setpoint, state = self._setpoint, self._state
+        if setpoint is None or state is None:
+            return
+        dt = 0.0 if self._last_t is None else t - self._last_t
+        self._last_t = t
+        yaw_rate = 0.0
+        if self._last_yaw is not None and dt > 0.0:
+            yaw_rate = wrap_pi(state.yaw - self._last_yaw) / dt
+        self._last_yaw = state.yaw
+
+        limit = self.config.max_torque
+        roll = self.roll_pid.update(setpoint.roll - state.roll, dt)
+        pitch = self.pitch_pid.update(setpoint.pitch - state.pitch, dt)
+        yaw = self.config.kp_yaw_rate * (setpoint.yaw_rate - yaw_rate)
+        command = TorqueCommand(
+            t=t,
+            roll=clamp(roll, -limit, limit),
+            pitch=clamp(pitch, -limit, limit),
+            yaw=clamp(yaw, -limit, limit),
+            thrust=clamp(setpoint.thrust, 0.0, 1.0),
+        )
+        self.publish({{ pub("TorqueCommand") | py }}, command)
+{% endblock %}

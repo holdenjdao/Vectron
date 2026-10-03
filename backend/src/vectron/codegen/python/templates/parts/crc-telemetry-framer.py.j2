@@ -1,0 +1,110 @@
+{% extends "module/base.py.j2" %}
+{% block helpers %}
+
+SYNC = b"\xa5\x5a"
+HEADER = struct.Struct("<HB")  # sequence number, payload length
+STATE = struct.Struct("<iiihhhB8s")  # lat/lon 1e-7 deg, alt cm, roll/pitch/yaw cdeg, soc %, mode
+
+
+def crc16_ccitt(data: bytes, crc: int = 0xFFFF) -> int:
+    """CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF): ``b"123456789"`` -> 0x29B1."""
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) if crc & 0x8000 else crc << 1
+            crc &= 0xFFFF
+    return crc
+
+
+def encode_frame(seq: int, payload: bytes) -> bytes:
+    """Frame layout: SYNC(2) | seq u16 | len u8 | payload | crc16 u16 (little-endian).
+
+    The CRC covers the header and payload, so a receiver can drop corrupted frames.
+    """
+    if len(payload) > 255:
+        raise ValueError("payload longer than 255 bytes")
+    body = HEADER.pack(seq & 0xFFFF, len(payload)) + payload
+    return SYNC + body + struct.pack("<H", crc16_ccitt(body))
+
+
+def decode_frame(frame: bytes) -> tuple[int, bytes]:
+    """Validate a frame and return ``(seq, payload)``; raises ValueError if corrupt."""
+    if len(frame) < len(SYNC) + HEADER.size + 2 or not frame.startswith(SYNC):
+        raise ValueError("missing sync bytes")
+    seq, length = HEADER.unpack_from(frame, len(SYNC))
+    end = len(SYNC) + HEADER.size + length
+    if len(frame) != end + 2:
+        raise ValueError("length mismatch")
+    (crc,) = struct.unpack_from("<H", frame, end)
+    if crc != crc16_ccitt(frame[len(SYNC) : end]):
+        raise ValueError("CRC mismatch")
+    return seq, frame[len(SYNC) + HEADER.size : end]
+
+
+def _centidegrees(angle_rad: float) -> int:
+    return round(math.degrees(wrap_pi(angle_rad)) * 100)
+
+
+def pack_state(state: NavState, soc_pct: float, mode: str) -> bytes:
+    return STATE.pack(
+        round(state.lat_deg * 1e7),
+        round(state.lon_deg * 1e7),
+        round(state.alt_m * 100),
+        _centidegrees(state.roll),
+        _centidegrees(state.pitch),
+        _centidegrees(state.yaw),
+        round(clamp(soc_pct, 0.0, 100.0)),
+        mode.encode("ascii", "replace")[:8],
+    )
+
+
+def unpack_state(payload: bytes) -> dict[str, float | str]:
+    lat, lon, alt, roll, pitch, yaw, soc, mode = STATE.unpack(payload)
+    return {
+        "lat_deg": lat / 1e7,
+        "lon_deg": lon / 1e7,
+        "alt_m": alt / 100,
+        "roll_deg": roll / 100,
+        "pitch_deg": pitch / 100,
+        "yaw_deg": yaw / 100,
+        "soc_pct": float(soc),
+        "mode": mode.rstrip(b"\0").decode("ascii"),
+    }
+{% endblock %}
+{% block init %}
+        self.seq = 0
+        self._state: NavState | None = None
+        self._soc_pct = 0.0
+        self._mode = "UNKNOWN"
+        self._last_sent: float | None = None
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("NavState") | py }}: self.on_state,
+            {{ sub("BatteryStatus") | py }}: self.on_battery,
+            {{ sub("FlightMode") | py }}: self.on_mode,
+        }
+
+    def on_state(self, state: NavState) -> None:
+        self._state = state
+
+    def on_battery(self, status: BatteryStatus) -> None:
+        self._soc_pct = status.soc_pct
+
+    def on_mode(self, mode: FlightMode) -> None:
+        self._mode = mode.mode
+
+    def tick(self, t: float) -> None:
+        """Emit one frame per downlink period once a navigation state is available."""
+        if self._state is None:
+            return
+        period = 1.0 / self.config.downlink_hz
+        if self._last_sent is not None and t - self._last_sent < period - 1e-9:
+            return
+        self._last_sent = t
+        frame = encode_frame(self.seq, pack_state(self._state, self._soc_pct, self._mode))
+        self.publish({{ pub("TelemetryFrame") | py }}, TelemetryFrame(t=t, seq=self.seq, payload=frame))
+        self.seq = (self.seq + 1) & 0xFFFF
+{% endblock %}

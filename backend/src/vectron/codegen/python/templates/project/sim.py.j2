@@ -1,0 +1,44 @@
+"""{{ ("Sample inputs for the " ~ spec.name ~ " smoke simulation, taken from the system spec.") | docwrap(3, 0) }}
+
+Replace SampleFeed with hardware drivers, a physics simulator or log replay.
+Modules cannot tell the difference: they only ever see messages on the bus.
+"""
+
+from __future__ import annotations
+
+from .core.bus import MessageBus
+{% if sim_messages %}
+from .core.messages import {{ sim_messages | join(", ") }}
+{% endif %}
+
+
+class SampleFeed:
+    """Publishes each sample input once, periodically, or on every step."""
+
+    def __init__(self, bus: MessageBus) -> None:
+        self.bus = bus
+        self._last_sent: dict[int, float] = {}
+        self._fired: set[int] = set()
+
+    def step(self, t: float) -> None:
+{% for sample in sim_inputs %}
+{% if sample.at_s is not none %}
+        if {{ sample.index }} not in self._fired and t >= {{ sample.at_s | py }}:
+            self._fired.add({{ sample.index }})
+            self.bus.publish({{ sample.topic | py }}, {{ message_call(sample) }})
+{% elif sample.period is not none %}
+        if self._due({{ sample.index }}, t, {{ sample.period | py }}):
+            self.bus.publish({{ sample.topic | py }}, {{ message_call(sample) }})
+{% else %}
+        self.bus.publish({{ sample.topic | py }}, {{ message_call(sample) }})
+{% endif %}
+{% else %}
+        pass
+{% endfor %}
+
+    def _due(self, key: int, t: float, period: float) -> bool:
+        last = self._last_sent.get(key)
+        if last is not None and t - last < period - 1e-9:
+            return False
+        self._last_sent[key] = t
+        return True

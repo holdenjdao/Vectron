@@ -1,0 +1,48 @@
+{% extends "module/base.py.j2" %}
+{% block init %}
+        self._state: NavState | None = None
+        self._target: PointOfInterest | None = None
+{% endblock %}
+{% block body %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+            {{ sub("NavState") | py }}: self.on_state,
+            {{ sub("PointOfInterest") | py }}: self.on_target,
+        }
+
+    def on_state(self, state: NavState) -> None:
+        self._state = state
+        self._point(state.t)
+
+    def on_target(self, target: PointOfInterest) -> None:
+        self._target = target
+        self._point(target.t)
+
+    def pointing(self, state: NavState, target: PointOfInterest) -> tuple[float, float]:
+        """Pan (deg, right of the nose) and tilt (deg, negative = below the horizon)."""
+        north, east, down = local_ned_offset(
+            state.lat_deg,
+            state.lon_deg,
+            state.alt_m,
+            target.lat_deg,
+            target.lon_deg,
+            target.alt_m,
+        )
+        bearing = math.degrees(math.atan2(east, north))
+        pan = wrap_180(bearing - math.degrees(state.yaw))
+        tilt = math.degrees(math.atan2(-down, math.hypot(north, east)))
+        limit = self.config.pan_limit_deg
+        return (
+            clamp(pan, -limit, limit),
+            clamp(tilt, self.config.tilt_min_deg, self.config.tilt_max_deg),
+        )
+
+    def _point(self, t: float) -> None:
+        state, target = self._state, self._target
+        if state is None or target is None or not state.position_valid:
+            return
+        pan, tilt = self.pointing(state, target)
+        command = GimbalCommand(t=t, pan_deg=pan, tilt_deg=tilt, tracking=True)
+        self.publish({{ pub("GimbalCommand") | py }}, command)
+{% endblock %}

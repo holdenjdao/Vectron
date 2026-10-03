@@ -1,0 +1,29 @@
+{% extends "module/base.py.j2" %}
+{% block init %}
+{% for topic in module.subscribes %}
+        self.latest_{{ topic_attr(topic) }}: {{ msgtype(topic) }} | None = None
+{% endfor %}
+{% endblock %}
+{% block body %}
+{% if module.subscribes %}
+
+    def handlers(self) -> Mapping[str, Callable[[Any], None]]:
+        return {
+{% for topic in module.subscribes %}
+            {{ topic | py }}: self.on_{{ topic_attr(topic) }},
+{% endfor %}
+        }
+{% for topic in module.subscribes %}
+
+    def on_{{ topic_attr(topic) }}(self, message: {{ msgtype(topic) }}) -> None:
+        self.latest_{{ topic_attr(topic) }} = message
+{% endfor %}
+{% endif %}
+
+    def tick(self, t: float) -> None:
+        {{ ("TODO(vectron): " ~ module.responsibility) | commentwrap(8) }}
+{% for topic in module.publishes %}
+        # Publish results with: self.publish({{ topic | py }}, {{ msgtype(topic) }}(t=t, ...))
+{% endfor %}
+        pass
+{% endblock %}

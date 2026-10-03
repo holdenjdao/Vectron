@@ -1,0 +1,50 @@
+"""{{ ("Behavioural tests for " ~ class_name ~ " (part:nmea-gga-parser" ~ ").") | docwrap(3, 0) }}"""
+
+import pytest
+
+from {{ package }}.core.bus import MessageBus
+from {{ package }}.core.messages import GnssFix, NmeaSentence
+from {{ package }}.{{ subsystem.id }}.{{ module.id }} import {{ class_name }}, parse_coordinate
+
+GGA = "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
+
+
+def make() -> tuple[MessageBus, {{ class_name }}, list[GnssFix]]:
+    bus = MessageBus()
+    module = {{ class_name }}(bus)
+    module.start()
+    fixes: list[GnssFix] = []
+    bus.subscribe({{ pub("GnssFix") | py }}, fixes.append)
+    return bus, module, fixes
+
+
+def test_parses_gga_fix() -> None:
+    bus, _, fixes = make()
+    bus.publish({{ sub("NmeaSentence") | py }}, NmeaSentence(t=1.0, text=GGA))
+    assert len(fixes) == 1
+    fix = fixes[0]
+    assert fix.lat_deg == pytest.approx(48.1173, abs=1e-4)
+    assert fix.lon_deg == pytest.approx(11.516667, abs=1e-5)
+    assert fix.alt_m == pytest.approx(545.4)
+    assert fix.satellites == 8
+    assert fix.valid
+
+
+def test_rejects_bad_checksum() -> None:
+    bus, module, fixes = make()
+    bus.publish({{ sub("NmeaSentence") | py }}, NmeaSentence(t=1.0, text=GGA[:-2] + "00"))
+    assert fixes == []
+    assert module.rejected == 1
+
+
+def test_ignores_other_sentence_types() -> None:
+    bus, module, fixes = make()
+    rmc = "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
+    bus.publish({{ sub("NmeaSentence") | py }}, NmeaSentence(t=1.0, text=rmc))
+    assert fixes == []
+    assert module.rejected == 0
+
+
+def test_southern_and_western_hemispheres_are_negative() -> None:
+    assert parse_coordinate("3345.600", "S") == pytest.approx(-33.76)
+    assert parse_coordinate("15112.000", "W") == pytest.approx(-151.2)
