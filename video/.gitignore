@@ -1,0 +1,6 @@
+node_modules/
+out/*
+!out/vectron-promo.mp4
+
+# The root .gitignore ignores build/ folders; these are video frames.
+!public/ui/build/
