@@ -1,4 +1,4 @@
-# Vectron product video: storyboard
+# vectron.ai product video: storyboard
 
 16:9, 1920×1080, 30 fps, 23 seconds. For developers, technical buyers and investors.
 The story: **one sentence in, a complete, inspected system out**, using real
@@ -11,7 +11,7 @@ footage of the app.
 | 3 Build | 7.0–11.7s | Split: copy on the left, the captured build playing on the right. Each crew role ticks as its stage appears on screen, the camera moves closer to the assembly line, and the status is ringed when it reads SUCCEEDED. | Agents do the architecture and fabrication, visibly and in order. | "02 Build: A crew of agents builds it." "Offline by default, or powered by Claude." Roles: Commander → Quartermaster. | The browser recedes and blurs; output cards come forward from it. |
 | 4 Deliver | 11.7–16.0s | Three layered cards (module source, the dimensioned airframe drawing, the inspection report) with the copy on the right. | You get real deliverables, not a demo. | "03 Deliver: Diagrams, code and tests. Ready to ship." 7 diagrams · 58 files · 13 modules · Inspection passed | The cards fold into one tile at the centre. |
 | 5 Integrate | 16.0–19.3s | Wide, symmetric composition: the build tile as a hub, lines drawing out to integration chips in two groups. | It fits into existing engineering and autonomy toolchains. | "04 Integrate: Plugs into your stack." Tag: Roadmap | The chips retract and the hub's mark rises. |
-| 6 Close | 19.3–23.0s | The Vectron mark, the tagline and a short descriptor; holds for about 2.5s. | Who this is for and what it stands for. | "Mission-ready systems, at the speed of command." "Vectron · Software factory for defense systems" | End. |
+| 6 Close | 19.3–23.0s | The Vectron mark, the tagline and a short descriptor; holds for about 2.5s. | Who this is for and what it stands for. | "Mission-ready systems, at the speed of command." "vectron.ai · Software factory for defense systems" | End. |
 
 ## Assumptions
 

@@ -6,7 +6,8 @@ export function AppFooter({ health }: { health: Resource<HealthInfo> }) {
   return (
     <footer className="app-footer">
       <span>
-        Vectron{version ? ` v${version}` : ""} · Software factory · Local assets only
+        <span className="brand-name">vectron.ai</span>
+        {version ? ` v${version}` : ""} · Software factory · Local assets only
       </span>
       {health.data?.llm.detail && (
         <span className="app-footer__detail" title={health.data.llm.detail}>

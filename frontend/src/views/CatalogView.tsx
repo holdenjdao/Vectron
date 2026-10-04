@@ -53,7 +53,7 @@ export function CatalogView() {
         <header className="intro">
           <h1 className="eyebrow">System catalog</h1>
           <p className="intro__lede">
-            Select a system. Vectron's agents will architect it, draft its diagrams and fabricate
+            Select a system. vectron.ai's agents will architect it, draft its diagrams and fabricate
             modular code.
           </p>
           <ChainOfCommand />

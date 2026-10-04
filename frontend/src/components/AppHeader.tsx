@@ -13,9 +13,9 @@ export function AppHeader({ route, health }: Props) {
   const section = route.name === "catalog" ? "catalog" : route.name === "not-found" ? null : "builds";
   return (
     <header className="app-header">
-      <a className="brand" href={routes.catalog} aria-label="Vectron software factory — catalog">
+      <a className="brand" href={routes.catalog} aria-label="vectron.ai software factory — catalog">
         <Logo />
-        <span className="brand__word">VECTRON</span>
+        <span className="brand__word">vectron.ai</span>
         <span className="brand__sub">SOFTWARE FACTORY</span>
       </a>
       <nav className="nav" aria-label="Primary">

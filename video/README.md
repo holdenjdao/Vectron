@@ -1,4 +1,4 @@
-# Vectron product video
+# vectron.ai product video
 
 A 23-second product video built with [Remotion](https://www.remotion.dev) (React).
 The rendered file is `out/vectron-promo.mp4`; the shot list is in

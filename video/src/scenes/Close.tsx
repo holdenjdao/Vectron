@@ -57,7 +57,7 @@ export const Close: React.FC = () => {
             opacity: inOut(frame, 46),
           }}
         >
-          <span style={{ color: colors.text }}>{copy.brand}</span>
+          <span style={{ color: colors.text, textTransform: "none" }}>{copy.brand}</span>
           {"  ·  "}
           {copy.close.footer}
         </span>

@@ -92,7 +92,7 @@ async function errorFromResponse(res: Response): Promise<ApiError> {
   if (!message) {
     const status = `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""}`;
     message =
-      res.status >= 500 ? `The Vectron backend is unavailable or failed (${status}).` : status;
+      res.status >= 500 ? `The vectron.ai backend is unavailable or failed (${status}).` : status;
   }
   return new ApiError(res.status, message, detail);
 }
@@ -103,7 +103,7 @@ async function send(url: string, init: RequestInit): Promise<Response> {
     res = await fetch(url, init);
   } catch (err) {
     if (isAbortError(err)) throw err;
-    throw new ApiError(0, "Cannot reach the Vectron backend. Check that the API server is running.");
+    throw new ApiError(0, "Cannot reach the vectron.ai backend. Check that the API server is running.");
   }
   if (!res.ok) throw await errorFromResponse(res);
   return res;

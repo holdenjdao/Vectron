@@ -3,8 +3,9 @@
 // below come from a real build of the Recon Drone blueprint.
 
 export const copy = {
-  brand: "Vectron",
-  brandLabel: "Vectron · Software factory",
+  // Always lowercase, including inside uppercase labels.
+  brand: "vectron.ai",
+  brandLabel: "Software factory",
 
   hook: ["One brief in.", "A complete system out."],
 
@@ -19,16 +20,16 @@ export const copy = {
     label: "Build",
     headline: ["A crew of agents", "builds it."],
     sub: "Offline by default, or powered by Claude.",
-    // Lit in order as the build progresses. `at` is the build frame (0–15)
-    // at which the role turns on.
+    // Lit in order as the build progresses. `at` is the build frame (0–11)
+    // at which the role turns on; the finished page is the last frame (11).
     roles: [
-      { name: "Commander", detail: "reads the brief", at: 1 },
+      { name: "Commander", detail: "reads the brief", at: 2 },
       { name: "Architect", detail: "derives the spec", at: 3 },
       { name: "Draftsman", detail: "draws the diagrams", at: 5 },
       { name: "Integrator", detail: "wires the core", at: 6 },
-      { name: "Engineers ×13", detail: "fabricate modules", at: 8 },
-      { name: "Inspector", detail: "runs the checks", at: 13 },
-      { name: "Quartermaster", detail: "packages the bundle", at: 15 },
+      { name: "Engineers ×13", detail: "fabricate modules", at: 7 },
+      { name: "Inspector", detail: "runs the checks", at: 10 },
+      { name: "Quartermaster", detail: "packages the bundle", at: 11 },
     ],
   },
 
@@ -50,7 +51,7 @@ export const copy = {
     headline: ["Plugs into your stack."],
     // Shown next to the label. Set to "" to hide it.
     tag: "Roadmap",
-    hub: "Vectron build",
+    hub: "Your build",
   },
 
   close: {
@@ -70,7 +71,7 @@ export const assets = {
   catalog: "ui/catalog.jpg",
   catalogWithBrief: "ui/catalog-brief.jpg",
   briefFrames: 33, // ui/brief/000.jpg … 032.jpg, the brief panel as it is typed
-  buildFrames: 15, // ui/build/000.jpg … 014.jpg, the job page as the build runs
+  buildFrames: 11, // ui/build/000.jpg … 010.jpg, the job page as the build runs
   jobDone: "ui/job-done.jpg",
   diagram: "ui/diagram-airframe.jpg",
   code: "ui/code-panel.jpg",

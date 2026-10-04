@@ -52,6 +52,8 @@ h1, h2, h3, h4, p { margin: 0; }
 .section { padding: clamp(72px, 9vw, 120px) 0; }
 .rule { height: 1px; background: var(--divider); border: 0; margin: 0; }
 .accent { color: var(--orange); }
+/* The brand is always written vectron.ai, even inside uppercase labels. */
+.brand-name { text-transform: none; }
 
 /* ── Labels ─────────────────────────────────────────────── */
 

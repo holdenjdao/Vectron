@@ -83,8 +83,14 @@
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.36em;
-  margin-right: -0.36em; /* optical: trailing letter-spacing */
+  letter-spacing: 0.24em;
+  margin-right: -0.24em; /* optical: trailing letter-spacing */
+  text-transform: none;
+}
+
+/* The brand is always written vectron.ai, even inside uppercase labels. */
+.brand-name {
+  text-transform: none;
 }
 
 .brand__sub {

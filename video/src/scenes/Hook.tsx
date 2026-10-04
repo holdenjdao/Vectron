@@ -32,6 +32,8 @@ export const Hook: React.FC = () => {
         }}
       >
         <VectronMark size={34} draw={progress(frame, 2, 26)} />
+        <span style={{ textTransform: "none", color: colors.text }}>{copy.brand}</span>
+        <span>·</span>
         {copy.brandLabel}
       </div>
       <div style={{ transform: `translateY(${-lift * 60}px)` }}>
