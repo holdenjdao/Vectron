@@ -239,7 +239,6 @@ h1, h2, h3, h4, p { margin: 0; }
 .logo svg { width: 30px; height: 30px; }
 .logo-word { display: flex; flex-direction: column; line-height: 1; }
 .logo-word strong { font-weight: 600; font-size: 19px; letter-spacing: -0.02em; }
-.logo-word small { font: 500 8px/1 var(--mono); letter-spacing: 0.42em; text-transform: uppercase; margin-top: 3px; }
 
 .nav-links { display: flex; gap: 2px; list-style: none; margin: 0; padding: 0; }
 .nav-links a {
