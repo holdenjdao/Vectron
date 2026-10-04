@@ -1,6 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="5" fill="#070b10"/>
-  <rect x="0.5" y="0.5" width="31" height="31" rx="4.5" fill="none" stroke="#27405a"/>
-  <path d="M5.5 8 L16 25.5 L26.5 8" fill="none" stroke="#38e0a0" stroke-width="2.6" stroke-linejoin="miter" stroke-linecap="square"/>
-  <path d="M12 8 L16 15 L20 8 Z" fill="#38e0a0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="heat" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff5a1f"/>
+      <stop offset="1" stop-color="#ffc24b"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0f0a0a"/>
+  <path d="M7 17 L19 16 L32 41 L28.5 51.5 Z" fill="#b3260c"/>
+  <path d="M28.5 51.5 L32 41 L45 14 L57 9 Z" fill="url(#heat)"/>
 </svg>

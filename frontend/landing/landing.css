@@ -6,19 +6,21 @@
 @import "@fontsource/chivo-mono/latin-600.css";
 
 :root {
-  --bg: #0d0d0f;
-  --bg-raised: #0f1118;
-  --white: #ffffff;
-  --orange: #f68020;
-  --orange-deep: #c46a10;
-  --blue: #0045d9;
-  --blue-hover: #003ab3;
-  --sky: #63aeff;
-  --grey: #949494;
-  --mute: rgba(255, 255, 255, 0.55);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --divider: rgba(255, 255, 255, 0.12);
+  /* Thermal palette. --blue and --sky keep their names but now hold the
+     solid accent and the amber "heat" colour. */
+  --bg: #0f0a0a;
+  --bg-raised: #1c1212;
+  --white: #fff4ec;
+  --orange: #ff5a1f;
+  --orange-deep: #b3260c;
+  --blue: #ff5a1f;
+  --blue-hover: #ff7a45;
+  --sky: #ffc24b;
+  --grey: #a3958d;
+  --mute: rgba(255, 244, 236, 0.6);
+  --border: rgba(255, 244, 236, 0.08);
+  --border-strong: rgba(255, 244, 236, 0.14);
+  --divider: rgba(255, 244, 236, 0.12);
 
   --sans: "Avenir Next", "Avenir", -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
   --mono: "Chivo Mono", "SF Mono", "Menlo", "Consolas", monospace;
@@ -77,8 +79,8 @@ h1, h2, h3, h4, p { margin: 0; }
   animation: dot-pulse 2.4s ease-in-out infinite;
 }
 @keyframes dot-pulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(246, 128, 32, 0.5); }
-  50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(246, 128, 32, 0); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 90, 31, 0.5); }
+  50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(255, 90, 31, 0); }
 }
 
 .kicker {
@@ -150,11 +152,11 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 .btn svg { width: 12px; height: 12px; }
 .btn-orange { background: var(--orange); color: var(--bg); }
-.btn-orange:hover { background: #ff9440; box-shadow: 0 0 32px rgba(246, 128, 32, 0.35); }
+.btn-orange:hover { background: #ff7a45; box-shadow: 0 0 32px rgba(255, 90, 31, 0.35); }
 .btn-outline { border-color: var(--border-strong); color: var(--white); }
-.btn-outline:hover { border-color: var(--orange); background: rgba(246, 128, 32, 0.08); }
-.btn-blue { background: var(--blue); color: var(--white); border-radius: 8px; padding: 12px 22px; font-weight: 600; }
-.btn-blue:hover { background: var(--blue-hover); box-shadow: 0 0 32px rgba(0, 69, 217, 0.45); }
+.btn-outline:hover { border-color: var(--orange); background: rgba(255, 90, 31, 0.08); }
+.btn-blue { background: var(--blue); color: var(--bg); border-radius: 8px; padding: 12px 22px; font-weight: 600; }
+.btn-blue:hover { background: var(--blue-hover); box-shadow: 0 0 32px rgba(179, 38, 12, 0.45); }
 .btn-square { border-radius: 8px; }
 
 /* Text link followed by an orange ring holding a diagonal arrow. */
@@ -202,6 +204,7 @@ h1, h2, h3, h4, p { margin: 0; }
   min-height: var(--announce-h);
   padding: 8px 16px;
   background: var(--blue);
+  color: var(--bg);
   font: 500 clamp(10px, 1.1vw, 12px) / 1.4 var(--mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -220,7 +223,7 @@ h1, h2, h3, h4, p { margin: 0; }
   width: calc(100% - 48px);
   max-width: 1280px;
   transform: translateX(-50%);
-  background: rgba(15, 17, 24, 0.72);
+  background: rgba(28, 18, 18, 0.72);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -229,7 +232,7 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 .nav.is-scrolled {
   top: 12px;
-  background: rgba(15, 17, 24, 0.92);
+  background: rgba(28, 18, 18, 0.92);
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
 }
@@ -265,8 +268,8 @@ h1, h2, h3, h4, p { margin: 0; }
   overflow: hidden;
   isolation: isolate;
   background:
-    radial-gradient(ellipse 70% 55% at 72% 38%, rgba(0, 69, 217, 0.34), transparent 70%),
-    radial-gradient(ellipse 50% 40% at 18% 100%, rgba(246, 128, 32, 0.12), transparent 70%),
+    radial-gradient(ellipse 70% 55% at 72% 38%, rgba(179, 38, 12, 0.34), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 18% 100%, rgba(255, 90, 31, 0.12), transparent 70%),
     linear-gradient(180deg, #0a0c14 0%, var(--bg) 100%);
 }
 /* Blueprint grid, faded toward the edges. */
@@ -276,8 +279,8 @@ h1, h2, h3, h4, p { margin: 0; }
   inset: 0;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(99, 174, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(99, 174, 255, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(255, 194, 75, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 194, 75, 0.07) 1px, transparent 1px);
   background-size: 64px 64px;
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
   mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
@@ -383,10 +386,10 @@ h1, h2, h3, h4, p { margin: 0; }
   aspect-ratio: 1;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 62%, rgba(99, 174, 255, 0.35), transparent 55%),
-    radial-gradient(circle at 50% 50%, rgba(0, 69, 217, 0.25), transparent 70%);
+    radial-gradient(circle at 50% 62%, rgba(255, 194, 75, 0.35), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(179, 38, 12, 0.25), transparent 70%);
 }
-.item-art svg { width: 56%; height: auto; color: var(--white); filter: drop-shadow(0 0 14px rgba(99, 174, 255, 0.55)); }
+.item-art svg { width: 56%; height: auto; color: var(--white); filter: drop-shadow(0 0 14px rgba(255, 194, 75, 0.55)); }
 
 /* ── Crew (column cards) ──────────────────────────────── */
 
@@ -407,8 +410,8 @@ h1, h2, h3, h4, p { margin: 0; }
 .cta {
   position: relative;
   padding: clamp(120px, 14vw, 200px) 0;
-  background: linear-gradient(180deg, var(--bg) 0%, #0a1230 45%, #08227a 100%);
-  border-bottom: 2px solid rgba(99, 174, 255, 0.25);
+  background: linear-gradient(180deg, var(--bg) 0%, #2a0d08 45%, #5c1206 100%);
+  border-bottom: 2px solid rgba(255, 194, 75, 0.25);
   overflow: hidden;
 }
 .cta::before {
@@ -460,7 +463,7 @@ h1, h2, h3, h4, p { margin: 0; }
   transition: opacity 0.3s, transform 0.3s var(--ease), border-color 0.25s, background-color 0.25s;
 }
 .to-top.is-visible { opacity: 1; transform: none; pointer-events: auto; }
-.to-top:hover { border-color: var(--orange); background: rgba(246, 128, 32, 0.12); }
+.to-top:hover { border-color: var(--orange); background: rgba(255, 90, 31, 0.12); }
 .to-top svg { width: 16px; height: 16px; }
 
 /* Fade-up on scroll; only when the script is running and motion is welcome. */

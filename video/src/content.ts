@@ -20,16 +20,16 @@ export const copy = {
     label: "Build",
     headline: ["A crew of agents", "builds it."],
     sub: "Offline by default, or powered by Claude.",
-    // Lit in order as the build progresses. `at` is the build frame (0–11)
-    // at which the role turns on; the finished page is the last frame (11).
+    // Lit in order as the build progresses. `at` is the build frame (0–13)
+    // at which the role turns on; the finished page is the last frame (13).
     roles: [
       { name: "Commander", detail: "reads the brief", at: 2 },
-      { name: "Architect", detail: "derives the spec", at: 3 },
-      { name: "Draftsman", detail: "draws the diagrams", at: 5 },
-      { name: "Integrator", detail: "wires the core", at: 6 },
-      { name: "Engineers ×13", detail: "fabricate modules", at: 7 },
-      { name: "Inspector", detail: "runs the checks", at: 10 },
-      { name: "Quartermaster", detail: "packages the bundle", at: 11 },
+      { name: "Architect", detail: "derives the spec", at: 4 },
+      { name: "Draftsman", detail: "draws the diagrams", at: 6 },
+      { name: "Integrator", detail: "wires the core", at: 7 },
+      { name: "Engineers ×13", detail: "fabricate modules", at: 8 },
+      { name: "Inspector", detail: "runs the checks", at: 11 },
+      { name: "Quartermaster", detail: "packages the bundle", at: 13 },
     ],
   },
 
@@ -71,7 +71,7 @@ export const assets = {
   catalog: "ui/catalog.jpg",
   catalogWithBrief: "ui/catalog-brief.jpg",
   briefFrames: 33, // ui/brief/000.jpg … 032.jpg, the brief panel as it is typed
-  buildFrames: 11, // ui/build/000.jpg … 010.jpg, the job page as the build runs
+  buildFrames: 13, // ui/build/000.jpg … 012.jpg, the job page as the build runs
   jobDone: "ui/job-done.jpg",
   diagram: "ui/diagram-airframe.jpg",
   code: "ui/code-panel.jpg",

@@ -41,7 +41,7 @@ export const Card: React.FC<Props> = ({ src, natural, width, label, labelAt = "t
           gap: 10,
           padding: "8px 14px",
           borderRadius: 999,
-          background: "rgba(11, 12, 16, 0.88)",
+          background: "rgba(15, 10, 10, 0.88)",
           border: `1px solid ${colors.line}`,
           fontFamily: fonts.mono,
           fontWeight: 500,

@@ -34,7 +34,7 @@ export const BrowserFrame: React.FC<Props> = ({ width, url, children }) => {
           alignItems: "center",
           padding: "0 18px",
           gap: 9,
-          background: "#16181f",
+          background: "#1c1212",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
         }}
       >

@@ -127,7 +127,7 @@ export const Integrate: React.FC = () => {
           borderRadius: 32,
           background: colors.bgRaised,
           border: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: `0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(0,69,217,${0.35 * hubIn})`,
+          boxShadow: `0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(179,38,12,${0.35 * hubIn})`,
           opacity: hubIn * tileFade,
           transform: `scale(${0.6 + 0.4 * hubIn})`,
         }}

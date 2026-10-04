@@ -1,17 +1,17 @@
-// Colours, fonts and type sizes. Matches the Vectron landing page: near-black,
-// white type, one orange accent, blue only for the blueprint grid.
+// Colours, fonts and type sizes. The Thermal palette, as on the vectron.ai
+// landing page: warm black, cream type, heat orange, amber for the grid.
 
 export const colors = {
-  bg: "#0b0c10",
-  bgRaised: "#12141b",
-  text: "#ffffff",
-  dim: "#9aa0aa",
-  faint: "#5d636e",
-  accent: "#f68020",
-  grid: "rgba(99, 174, 255, 0.07)",
-  glow: "rgba(0, 69, 217, 0.28)",
-  line: "rgba(255, 255, 255, 0.12)",
-  card: "#0f1218",
+  bg: "#0f0a0a",
+  bgRaised: "#1c1212",
+  text: "#fff4ec",
+  dim: "#a3958d",
+  faint: "#5f524c",
+  accent: "#ff5a1f",
+  grid: "rgba(255, 194, 75, 0.06)",
+  glow: "rgba(179, 38, 12, 0.32)",
+  line: "rgba(255, 244, 236, 0.12)",
+  card: "#140d0d",
 };
 
 export const fonts = {

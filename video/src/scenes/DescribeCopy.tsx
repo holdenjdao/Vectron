@@ -19,7 +19,7 @@ export const DescribeCopy: React.FC = () => {
       <AbsoluteFill
         style={{
           opacity: scrim,
-          background: `linear-gradient(180deg, ${colors.bg} 0%, rgba(11,12,16,0.86) 300px, rgba(11,12,16,0) 470px)`,
+          background: `linear-gradient(180deg, ${colors.bg} 0%, rgba(15,10,10,0.86) 300px, rgba(15,10,10,0) 470px)`,
         }}
       />
       <div style={{ position: "absolute", left: 120, top: 70 }}>

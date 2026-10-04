@@ -138,7 +138,7 @@ export const ProductStage: React.FC = () => {
               border: `2px solid ${colors.accent}`,
               borderRadius: 6,
               opacity: ring > 0 ? ringFade : 0,
-              boxShadow: `0 0 24px rgba(246,128,32,0.45)`,
+              boxShadow: `0 0 24px rgba(255,90,31,0.45)`,
             }}
           />
           <svg
@@ -168,7 +168,7 @@ export const ProductStage: React.FC = () => {
                 width: 140,
                 border: `2px solid ${colors.accent}`,
                 borderRadius: 8,
-                boxShadow: "0 0 28px rgba(246,128,32,0.4)",
+                boxShadow: "0 0 28px rgba(255,90,31,0.4)",
                 opacity: statusRing,
               }}
             />

@@ -14,7 +14,7 @@ export const Background: React.FC = () => {
       <AbsoluteFill
         style={{
           background: `radial-gradient(ellipse 60% 55% at ${gx}% ${gy}%, ${colors.glow}, transparent 70%),
-            radial-gradient(ellipse 45% 40% at 12% 100%, rgba(246, 128, 32, 0.07), transparent 70%)`,
+            radial-gradient(ellipse 45% 40% at 12% 100%, rgba(255, 194, 75, 0.06), transparent 70%)`,
         }}
       />
       <AbsoluteFill
