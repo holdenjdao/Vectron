@@ -37,7 +37,7 @@
   --role-inspector: #ff9f68;
   --role-packager: #e2e8f0;
 
-  --font-ui: Inter, "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-ui: "Instrument Sans", "Segoe UI", Roboto, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
 

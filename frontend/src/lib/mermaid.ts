@@ -5,7 +5,7 @@ import type { MermaidConfig } from "mermaid";
 
 type MermaidApi = (typeof import("mermaid"))["default"];
 
-const FONT = 'Inter, "Segoe UI", Roboto, system-ui, sans-serif';
+const FONT = '"Instrument Sans", "Segoe UI", Roboto, system-ui, sans-serif';
 
 // Dark "tactical console" palette. Mermaid derives colours with khroma, so
 // everything here is a plain hex value.
